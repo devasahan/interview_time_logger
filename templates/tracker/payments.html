@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Payments{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Payments</h1>
+    <p class="muted">You're paid weekly for the interviews you log.</p>
+  </div>
+</div>
+
+<section class="stats">
+  <div class="stat stat-accent">
+    <span class="stat-label">To be paid</span>
+    <span class="stat-value">{{ unpaid_totals.unpaid|money }}</span>
+    <span class="stat-sub">{{ unpaid_totals.count }} unpaid interview{{ unpaid_totals.count|pluralize }}{% if unpaid_totals.unpriced %}, {{ unpaid_totals.unpriced }} waiting for a rate{% endif %}</span>
+  </div>
+  <div class="stat stat-good">
+    <span class="stat-label">Paid so far</span>
+    <span class="stat-value">{{ paid_total|money }}</span>
+    <span class="stat-sub">all time</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Last payment</span>
+    <span class="stat-value">{% if last_payout %}{{ last_payout.amount|money }}{% else %}—{% endif %}</span>
+    <span class="stat-sub">{% if last_payout %}on {{ last_payout.paid_at|date:"M j, Y" }}{% else %}No payments yet{% endif %}</span>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>Coming up</h2><span class="meta">Unpaid work by pay week</span></div>
+  {% if upcoming %}
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead><tr><th>Pay week</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+          {% for week in upcoming %}
+            <tr>
+              <td data-label="Pay week"><a href="{% url 'tracker:history' %}?period=week&amp;date={{ week.period.start|date:'Y-m-d' }}">{{ week.period.label }}</a></td>
+              <td class="num" data-label="Interviews">{{ week.totals.count }}</td>
+              <td class="num" data-label="Time">{{ week.totals.minutes|duration }}</td>
+              <td class="num" data-label="Amount">{{ week.totals.unpaid|money }}{% if week.totals.unpriced %} <span class="badge badge-muted">rate not set</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>Nothing waiting</strong>Everything you've logged has been paid.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>Payment history</h2></div>
+  {% if payouts %}
+    {% include "includes/payout_table.html" with payouts=payouts %}
+    {% include "includes/pagination.html" with page_obj=payouts %}
+  {% else %}
+    <div class="empty"><strong>No payments yet</strong>Payments appear here when your admin marks a week as paid.</div>
+  {% endif %}
+</section>
+{% endblock %}

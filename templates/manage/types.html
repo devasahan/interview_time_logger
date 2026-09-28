@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Interview types{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Interview types</h1>
+    <p class="muted">The choices members pick from when they log an interview.</p>
+  </div>
+</div>
+
+<div class="columns">
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead><tr><th>Name</th><th>Status</th><th class="num">Used</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          {% for interview_type in types %}
+            <tr>
+              <td data-label="Name"><strong>{{ interview_type.name }}</strong></td>
+              <td data-label="Status">{% if interview_type.is_active %}<span class="badge badge-active">Available</span>{% else %}<span class="badge badge-deactivated">Hidden</span>{% endif %}</td>
+              <td class="num" data-label="Used">{{ interview_type.usage }}</td>
+              <td class="actions"><a href="{% url 'tracker:manage_type_edit' interview_type.pk %}">Edit</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty">No interview types yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><h2>Add a type</h2></div>
+    <div class="panel-body">
+      <form method="post">
+        {% csrf_token %}
+        {% include "includes/form_errors.html" %}
+        {% include "includes/field.html" with field=form.name %}
+        {% include "includes/field.html" with field=form.is_active %}
+        <button type="submit" class="btn btn-primary">Add type</button>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

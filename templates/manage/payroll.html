@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Payroll{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Payroll</h1>
+    <p class="muted">Review each pay week, pay your team, then mark it as paid here.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'tracker:manage_payroll_week' current_week.start %}">This week ({{ current_week.label }})</a>
+  </div>
+</div>
+
+<section class="stats">
+  <div class="stat stat-accent">
+    <span class="stat-label">To be paid</span>
+    <span class="stat-value">{{ unpaid_totals.unpaid|money }}</span>
+    <span class="stat-sub">{{ members_owed }} member{{ members_owed|pluralize }} · {{ unpaid_totals.minutes|duration }}{% if unpaid_totals.unpriced %} · {{ unpaid_totals.unpriced }} without a rate{% endif %}</span>
+  </div>
+  <div class="stat stat-good">
+    <span class="stat-label">Paid in {{ month.start|date:"F" }}</span>
+    <span class="stat-value">{{ paid_this_month|money }}</span>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>Weeks with unpaid work</h2></div>
+  {% if weeks %}
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead><tr><th>Pay week</th><th class="num">Members</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          {% for summary in weeks %}
+            <tr>
+              <td data-label="Pay week">{{ summary.period.label }}{% if summary.period.is_current %} <span class="badge badge-admin">this week</span>{% endif %}</td>
+              <td class="num" data-label="Members">{{ summary.member_count }}</td>
+              <td class="num" data-label="Interviews">{{ summary.totals.count }}</td>
+              <td class="num" data-label="Time">{{ summary.totals.minutes|duration }}</td>
+              <td class="num" data-label="To be paid"><strong>{{ summary.totals.unpaid|money }}</strong>{% if summary.totals.unpriced %} <span class="badge badge-muted">{{ summary.totals.unpriced }} without rate</span>{% endif %}</td>
+              <td class="actions"><a class="btn btn-sm" href="{% url 'tracker:manage_payroll_week' summary.period.start %}">Review &amp; pay</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>Everyone is paid up</strong>New interviews will show up here by pay week.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>Payment history</h2></div>
+  {% if payouts %}
+    {% include "includes/payout_table.html" with payouts=payouts show_member=True show_undo=True %}
+    {% include "includes/pagination.html" with page_obj=payouts %}
+  {% else %}
+    <div class="empty">No payments recorded yet.</div>
+  {% endif %}
+</section>
+{% endblock %}

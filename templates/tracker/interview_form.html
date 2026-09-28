@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if interview %}Edit interview{% else %}Log an interview{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    {% if interview and interview.user_id != user.pk %}<p class="eyebrow">{{ interview.user.display_name }}</p>{% endif %}
+    <h1>{% if interview %}Edit interview{% else %}Log an interview{% endif %}</h1>
+  </div>
+</div>
+
+<form method="post" class="panel form-narrow" id="interview-form">
+  <div class="panel-body">
+    {% csrf_token %}
+    {% include "includes/form_errors.html" %}
+    <div class="grid-3">
+      {% include "includes/field.html" with field=form.date %}
+      {% include "includes/field.html" with field=form.start_time %}
+      {% include "includes/field.html" with field=form.end_time %}
+    </div>
+    <p class="duration-preview" id="duration-preview" aria-live="polite"></p>
+    <div class="grid-2">
+      {% include "includes/field.html" with field=form.interview_with %}
+      {% include "includes/field.html" with field=form.role %}
+    </div>
+    {% include "includes/field.html" with field=form.interview_type %}
+    {% include "includes/field.html" with field=form.notes %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% if interview %}Save changes{% else %}Save interview{% endif %}</button>
+      {% if not interview %}<button type="submit" class="btn" name="add_another" value="1">Save and log another</button>{% endif %}
+      <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
+      {% if interview %}<a class="btn btn-ghost danger push-right" href="{% url 'tracker:interview_delete' interview.pk %}?next={{ next|urlencode }}">Delete</a>{% endif %}
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/duration.js' %}"></script>{% endblock %}

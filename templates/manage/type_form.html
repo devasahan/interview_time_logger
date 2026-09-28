@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ original_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow"><a href="{% url 'tracker:manage_types' %}">← Interview types</a></p>
+    <h1>Edit “{{ original_name }}”</h1>
+    <p class="muted">Used by {{ usage }} interview{{ usage|pluralize }}. Renaming updates them too. Hide a type instead of deleting it so past interviews keep their type.</p>
+  </div>
+</div>
+
+<form method="post" class="panel form-narrow">
+  <div class="panel-body">
+    {% csrf_token %}
+    {% include "includes/form_errors.html" %}
+    {% include "includes/field.html" with field=form.name %}
+    {% include "includes/field.html" with field=form.is_active %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a class="btn btn-ghost" href="{% url 'tracker:manage_types' %}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

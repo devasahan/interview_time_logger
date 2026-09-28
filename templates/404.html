@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+<section class="panel confirm">
+  <div class="empty">
+    <strong>We couldn't find that page</strong>
+    <a href="{% url 'tracker:home' %}">Go to your dashboard</a>
+  </div>
+</section>
+{% endblock %}

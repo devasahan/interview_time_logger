@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    {% if admin_view and selected_member %}<p class="eyebrow"><a href="{% url 'tracker:manage_member' selected_member.pk %}">Team member</a></p>{% endif %}
+    <h1>{{ heading }}</h1>
+  </div>
+  {% if can_log %}
+    <div class="page-actions"><a class="btn btn-primary" href="{% url 'tracker:interview_create' %}?date={{ anchor|date:'Y-m-d' }}">+ Log interview</a></div>
+  {% endif %}
+</div>
+
+{% if admin_view %}
+  <form class="filters" method="get">
+    <input type="hidden" name="period" value="{{ period.kind }}">
+    <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
+    <label>
+      Member
+      <select name="user" onchange="this.form.submit()">
+        <option value="">Everyone</option>
+        {% for member in members %}
+          <option value="{{ member.pk }}"{% if selected_member and member.pk == selected_member.pk %} selected{% endif %}>{{ member.display_name }}{% if not member.is_active %} (deactivated){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button type="submit" class="btn btn-sm">Show</button></noscript>
+  </form>
+{% endif %}
+
+{% include "includes/period_nav.html" %}
+
+<section class="stats">
+  <div class="stat">
+    <span class="stat-label">Interviews</span>
+    <span class="stat-value">{{ totals.count }}</span>
+    <span class="stat-sub">{{ totals.minutes|duration }}{% if totals.minutes %} ({{ totals.minutes|hours }} hours){% endif %}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Earned</span>
+    <span class="stat-value">{{ totals.earned|money }}</span>
+    <span class="stat-sub">for interviews in this {{ period.kind }}</span>
+  </div>
+  <div class="stat stat-good">
+    <span class="stat-label">Paid</span>
+    <span class="stat-value text-success">{{ totals.paid|money }}</span>
+  </div>
+  <div class="stat stat-accent">
+    <span class="stat-label">To be paid</span>
+    <span class="stat-value text-warning">{{ totals.unpaid|money }}</span>
+    {% if totals.unpriced %}<span class="stat-sub">+ {{ totals.unpriced }} interview{{ totals.unpriced|pluralize }} waiting for a rate</span>{% endif %}
+  </div>
+</section>
+
+{% if member_rows %}
+  <section class="panel">
+    <div class="panel-header"><h2>By member</h2></div>
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead>
+          <tr><th>Member</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">To be paid</th></tr>
+        </thead>
+        <tbody>
+          {% for member, member_totals in member_rows %}
+            <tr>
+              <td data-label="Member"><a href="{% querystring user=member.pk %}">{{ member.display_name }}</a></td>
+              <td class="num" data-label="Interviews">{{ member_totals.count }}</td>
+              <td class="num" data-label="Time">{{ member_totals.minutes|duration }}</td>
+              <td class="num" data-label="Earned">{{ member_totals.earned|money }}</td>
+              <td class="num" data-label="Paid">{{ member_totals.paid|money }}</td>
+              <td class="num" data-label="To be paid">{{ member_totals.unpaid|money }}{% if member_totals.unpriced %} <span class="badge badge-muted">rate not set</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}
+
+{% for group in groups %}
+  <section class="panel">
+    <div class="panel-header">
+      <h2>{{ group.label }}</h2>
+      <span class="meta">{{ group.totals.count }} interview{{ group.totals.count|pluralize }} · {{ group.totals.minutes|duration }} · {{ group.totals.earned|money }}</span>
+    </div>
+    {% include "tracker/_interview_table.html" with interviews=group.interviews %}
+  </section>
+{% empty %}
+  <section class="panel">
+    <div class="empty">
+      <strong>No interviews in {{ period.label }}</strong>
+      {% if can_log %}Log one with the button above.{% else %}Use the arrows to look at other {{ period.kind }}s.{% endif %}
+    </div>
+  </section>
+{% endfor %}
+{% endblock %}

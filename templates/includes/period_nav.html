@@ -1,0 +1,14 @@
+<div class="period-bar">
+  <div class="tabs">
+    <a class="tab{% if period.kind == 'week' %} active{% endif %}" href="{% querystring period='week' date=anchor %}">Week</a>
+    <a class="tab{% if period.kind == 'month' %} active{% endif %}" href="{% querystring period='month' date=anchor %}">Month</a>
+  </div>
+  <div class="period-nav">
+    <a class="btn btn-ghost arrow" href="{% querystring period=period.kind date=period.previous.start %}" aria-label="Previous {{ period.kind }}">‹</a>
+    <span class="period-label">{{ period.label }}</span>
+    <a class="btn btn-ghost arrow" href="{% querystring period=period.kind date=period.next.start %}" aria-label="Next {{ period.kind }}">›</a>
+    {% if not period.is_current %}
+      <a class="btn btn-sm" href="{% querystring period=period.kind date=None %}">{% if period.kind == 'month' %}This month{% else %}This week{% endif %}</a>
+    {% endif %}
+  </div>
+</div>

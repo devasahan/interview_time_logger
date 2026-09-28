@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Team</h1>
+    <p class="muted">New members sign up at <a href="{% url 'accounts:signup' %}">{{ request.scheme }}://{{ request.get_host }}{% url 'accounts:signup' %}</a>. Approve them by setting their hourly rate.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead>
+        <tr><th>Member</th><th>Status</th><th class="num">Hourly rate</th><th class="num">This week</th><th class="num">To be paid</th><th>Joined</th><th><span class="sr-only">Actions</span></th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr{% if row.member.status == "pending" %} class="highlight"{% endif %}>
+            <td data-label="Member">
+              <div><a href="{% url 'tracker:manage_member' row.member.pk %}"><strong>{{ row.member.display_name }}</strong></a><span class="sub">{{ row.member.username }}{% if row.member.email %} · {{ row.member.email }}{% endif %}</span></div>
+            </td>
+            <td data-label="Status">
+              {% if row.member.status == "pending" %}<span class="badge badge-pending">Waiting for approval</span>
+              {% elif row.member.status == "active" %}<span class="badge badge-active">Active</span>
+              {% elif row.member.status == "admin" %}<span class="badge badge-admin">Admin</span>
+              {% else %}<span class="badge badge-deactivated">Deactivated</span>{% endif %}
+            </td>
+            <td class="num" data-label="Hourly rate">{% if row.rate is not None %}{{ row.rate|money }}/h{% else %}—{% endif %}</td>
+            <td class="num" data-label="This week">{{ row.week.minutes|duration }}</td>
+            <td class="num" data-label="To be paid">{{ row.unpaid.unpaid|money }}</td>
+            <td data-label="Joined" class="nowrap">{{ row.member.date_joined|date:"M j, Y" }}</td>
+            <td class="actions"><a class="btn btn-sm{% if row.member.status == 'pending' %} btn-primary{% endif %}" href="{% url 'tracker:manage_member' row.member.pk %}">{% if row.member.status == "pending" %}Approve{% else %}Manage{% endif %}</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

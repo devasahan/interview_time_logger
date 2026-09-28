@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Payroll {{ period.label }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow"><a href="{% url 'tracker:manage_payroll' %}">← Payroll</a></p>
+    <h1>Pay week {{ period.label }}</h1>
+  </div>
+  <div class="period-nav">
+    <a class="btn btn-ghost arrow" href="{% url 'tracker:manage_payroll_week' period.previous.start %}" aria-label="Previous week">‹</a>
+    <a class="btn btn-ghost arrow" href="{% url 'tracker:manage_payroll_week' period.next.start %}" aria-label="Next week">›</a>
+    {% if totals.unpaid %}
+      <a class="btn btn-primary" href="{% url 'tracker:manage_payroll_pay' period.start %}">Pay everyone ({{ totals.unpaid|money }})</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if period.is_current %}
+  <div class="alert alert-info" style="margin-bottom:24px"><p>This week isn't over yet. Your team can still log interviews for it.</p></div>
+{% endif %}
+
+<section class="stats">
+  <div class="stat">
+    <span class="stat-label">Logged</span>
+    <span class="stat-value">{{ totals.minutes|duration }}</span>
+    <span class="stat-sub">{{ totals.count }} interview{{ totals.count|pluralize }} · {{ totals.earned|money }}</span>
+  </div>
+  <div class="stat stat-good">
+    <span class="stat-label">Paid</span>
+    <span class="stat-value text-success">{{ totals.paid|money }}</span>
+  </div>
+  <div class="stat stat-accent">
+    <span class="stat-label">To be paid</span>
+    <span class="stat-value text-warning">{{ totals.unpaid|money }}</span>
+    {% if totals.unpriced %}<span class="stat-sub">+ {{ totals.unpriced }} interview{{ totals.unpriced|pluralize }} without a rate</span>{% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>By member</h2></div>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead><tr><th>Member</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          {% for member, member_totals in rows %}
+            <tr>
+              <td data-label="Member"><a href="{% url 'tracker:manage_member' member.pk %}">{{ member.display_name }}</a></td>
+              <td class="num" data-label="Interviews">{{ member_totals.count }}</td>
+              <td class="num" data-label="Time">{{ member_totals.minutes|duration }}</td>
+              <td class="num" data-label="Earned">{{ member_totals.earned|money }}</td>
+              <td class="num" data-label="Paid">{{ member_totals.paid|money }}</td>
+              <td class="num" data-label="To be paid"><strong>{{ member_totals.unpaid|money }}</strong></td>
+              <td class="actions">
+                {% if member_totals.unpaid %}
+                  <a class="btn btn-sm btn-primary" href="{% url 'tracker:manage_payroll_pay' period.start %}?user={{ member.pk }}">Pay {{ member_totals.unpaid|money }}</a>
+                {% elif member_totals.unpriced %}
+                  <a class="btn btn-sm" href="{% url 'tracker:manage_member' member.pk %}">Set rate first</a>
+                {% else %}
+                  <span class="badge badge-paid">Paid</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><strong>No interviews in this week</strong>Use the arrows to go to another week.</div>
+  {% endif %}
+</section>
+
+{% if payouts %}
+  <section class="panel">
+    <div class="panel-header"><h2>Payments recorded for this week</h2></div>
+    {% include "includes/payout_table.html" with payouts=payouts show_member=True show_undo=True %}
+  </section>
+{% endif %}
+
+{% if interviews %}
+  <section class="panel">
+    <div class="panel-header"><h2>All interviews this week</h2></div>
+    {% include "tracker/_interview_table.html" with interviews=interviews %}
+  </section>
+{% endif %}
+{% endblock %}
