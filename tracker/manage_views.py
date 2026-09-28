@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import InterviewTypeForm, PayoutForm, RateForm
+from .forms import ApproveForm, InterviewTypeForm, PayoutForm, RateForm
 from .models import HourlyRate, Interview, InterviewType, Payout
 from .periods import Period, format_range
 from .services import (
@@ -130,6 +130,21 @@ def team(request):
     return render(request, "manage/team.html", {"nav": "team", "rows": rows})
 
 
+def _save_rate(request, member, rate, effective_from):
+    """Set a member's rate, approving them if they're still waiting."""
+    set_hourly_rate(member, rate, effective_from, request.user)
+    if not member.is_approved:
+        member.is_approved = True
+        member.save(update_fields=["is_approved"])
+        messages.success(
+            request, f"{member.display_name} is approved at {money(rate)}/h and can start logging interviews."
+        )
+    else:
+        messages.success(
+            request, f"{member.display_name}'s rate is {money(rate)}/h from {_long_date(effective_from)}."
+        )
+
+
 @staff_required
 def member_detail(request, pk):
     member = get_object_or_404(User, pk=pk)
@@ -137,25 +152,15 @@ def member_detail(request, pk):
 
     form = RateForm(request.POST if request.method == "POST" else None)
     if form.is_bound and form.is_valid():
-        rate, effective_from = form.cleaned_data["rate"], form.cleaned_data["effective_from"]
-        set_hourly_rate(member, rate, effective_from, request.user)
-        if not member.is_approved:
-            member.is_approved = True
-            member.save(update_fields=["is_approved"])
-            messages.success(
-                request,
-                f"{member.display_name} is approved at {money(rate)}/h and can start logging interviews.",
-            )
-        else:
-            messages.success(
-                request, f"{member.display_name}'s rate is {money(rate)}/h from {_long_date(effective_from)}."
-            )
+        _save_rate(request, member, form.cleaned_data["rate"], form.cleaned_data["effective_from"])
         return redirect("tracker:manage_member", pk=member.pk)
 
     rate_book = RateBook([member.pk])
     current_rate = rate_book.current_rate(member.pk)
     if not form.is_bound:
         form = RateForm(initial={"rate": current_rate, "effective_from": today})
+        if member.status == "pending":
+            form.fields["rate"].widget.attrs["autofocus"] = True
 
     week, month = Period.week_of(today), Period.month_of(today)
     in_range = price_interviews(
@@ -180,6 +185,18 @@ def member_detail(request, pk):
             "is_self": member.pk == request.user.pk,
         },
     )
+
+
+@staff_required
+@require_POST
+def member_approve(request, pk):
+    member = get_object_or_404(User, pk=pk)
+    form = ApproveForm(request.POST)
+    if form.is_valid():
+        _save_rate(request, member, form.cleaned_data["rate"], timezone.localdate())
+    else:
+        messages.error(request, f"{member.display_name} wasn't approved. {form.errors['rate'][0]}")
+    return redirect(safe_next(request, reverse("tracker:manage_team")))
 
 
 @staff_required

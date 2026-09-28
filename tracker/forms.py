@@ -70,8 +70,24 @@ class InterviewForm(forms.ModelForm):
         return cleaned
 
 
+def hourly_rate_field():
+    return forms.DecimalField(
+        label="Hourly rate",
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        error_messages={"required": "Enter an hourly rate, for example 20.00."},
+    )
+
+
+class ApproveForm(forms.Form):
+    """One-step approval from the Team page; the rate starts today."""
+
+    rate = hourly_rate_field()
+
+
 class RateForm(forms.Form):
-    rate = forms.DecimalField(label="Hourly rate", max_digits=10, decimal_places=2, min_value=0)
+    rate = hourly_rate_field()
     effective_from = forms.DateField(
         widget=DateInput(),
         validators=[MinValueValidator(EARLIEST_DATE), MaxValueValidator(LATEST_DATE)],

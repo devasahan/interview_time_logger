@@ -289,6 +289,8 @@ label.checkbox input { width: auto; margin: 0; }
 }
 .form-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 .form-narrow { max-width: 760px; }
+.approve-inline, .table .actions .approve-inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
+.approve-inline input[type="number"] { width: 110px; padding: 5px 9px; font-size: 14px; }
 .inline-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .inline-form .field { margin-bottom: 0; flex: 1 1 180px; }
 .duration-preview { min-height: 1.5em; margin: -6px 0 16px; font-size: 14px; font-weight: 600; color: var(--primary); }

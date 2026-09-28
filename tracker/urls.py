@@ -20,6 +20,7 @@ urlpatterns = [
     path("manage/interviews/", manage_views.interviews, name="manage_interviews"),
     path("manage/team/", manage_views.team, name="manage_team"),
     path("manage/team/<int:pk>/", manage_views.member_detail, name="manage_member"),
+    path("manage/team/<int:pk>/approve/", manage_views.member_approve, name="manage_member_approve"),
     path("manage/team/<int:pk>/active/", manage_views.member_toggle_active, name="manage_member_active"),
     path(
         "manage/team/<int:pk>/rates/<int:rate_pk>/delete/",

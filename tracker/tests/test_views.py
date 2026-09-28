@@ -41,6 +41,14 @@ class AccessTests(TestCase):
         for url in self.admin_urls:
             self.assertEqual(self.client.get(url).status_code, 403, url)
 
+    def test_members_cannot_approve_anyone(self):
+        pending = make_user("newbie", approved=False)
+        self.client.force_login(make_user())
+        response = self.client.post(reverse("tracker:manage_member_approve", args=[pending.pk]), {"rate": "99"})
+        self.assertEqual(response.status_code, 403)
+        pending.refresh_from_db()
+        self.assertFalse(pending.is_approved)
+
     def test_members_cannot_touch_other_members_interviews(self):
         other = make_interview(make_user("sam"))
         self.client.force_login(make_user())
@@ -154,6 +162,37 @@ class AdminFlowTests(TestCase):
         self.admin = make_admin()
         self.client.force_login(self.admin)
         self.week = last_week()
+
+    def test_approve_from_the_team_page_in_one_step(self):
+        newbie = make_user("newbie", approved=False)
+        approve_url = reverse("tracker:manage_member_approve", args=[newbie.pk])
+        self.assertContains(self.client.get(reverse("tracker:manage_team")), approve_url)
+
+        response = self.client.post(approve_url, {"rate": "20"}, follow=True)
+        self.assertRedirects(response, reverse("tracker:manage_team"))
+        self.assertContains(response, "is approved at $20.00/h")
+        newbie.refresh_from_db()
+        self.assertTrue(newbie.is_approved)
+        rate = HourlyRate.objects.get(user=newbie)
+        self.assertEqual((rate.rate, rate.effective_from), (Decimal("20"), timezone.localdate()))
+
+    def test_approving_without_a_rate_says_why(self):
+        newbie = make_user("newbie", approved=False)
+        response = self.client.post(
+            reverse("tracker:manage_member_approve", args=[newbie.pk]), {"rate": ""}, follow=True
+        )
+        self.assertContains(response, "Enter an hourly rate, for example 20.00.")
+        newbie.refresh_from_db()
+        self.assertFalse(newbie.is_approved)
+
+        # Same on the member page: the error shows next to the rate box.
+        response = self.client.post(
+            reverse("tracker:manage_member", args=[newbie.pk]),
+            {"rate": "", "effective_from": timezone.localdate().isoformat()},
+        )
+        self.assertContains(response, "Enter an hourly rate, for example 20.00.")
+        newbie.refresh_from_db()
+        self.assertFalse(newbie.is_approved)
 
     def test_approve_a_new_member_by_setting_their_rate(self):
         newbie = make_user("newbie", approved=False)
