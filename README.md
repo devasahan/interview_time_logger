@@ -9,9 +9,10 @@ A small web app where team members log the interviews they take part in, and the
 - See every payment they've received and what's coming up next.
 
 **The admin can:**
-- Approve new sign-ups and set or change each member's hourly rate. Only the admin can do this.
+- Approve new sign-ups in one step on the **Team** page by entering their hourly rate, and change rates later. Only the admin can do this.
 - See everyone's interviews by week or month, filtered by member.
-- Run weekly payroll: review a week, pay a member (or everyone), and record it with an optional note such as a transfer reference. A payment recorded by mistake can be undone.
+- Change any interview's pay status between **To be paid** and **Paid** right in the interview lists (Overview, Interviews, each pay week). Members see the new status, with the date it was paid.
+- Or run weekly payroll: review a week, pay a member (or everyone) in one go, and record it with an optional note such as a transfer reference. A payment recorded by mistake can be undone.
 - Manage the list of interview types.
 - Deactivate members who leave. Their history is kept.
 
@@ -41,9 +42,9 @@ Open http://127.0.0.1:8000 and log in with the admin account.
 ### Try the whole flow
 
 1. Open a private browser window, go to http://127.0.0.1:8000/accounts/signup/ and create a member account. It says "waiting for approval".
-2. In your admin window go to **Team**, open the new member, enter an hourly rate and click **Approve at this rate**.
+2. In your admin window go to **Team**, type an hourly rate next to the new member and click **Approve**.
 3. As the member, click **+ Log interview** and add a few interviews. Look at **My interviews** (week and month tabs) and **Payments**.
-4. As the admin, open **Payroll**, pick the week, click **Pay …**, check the amounts and **Mark as paid**.
+4. As the admin, change an interview's status to **Paid** in **Interviews** (or open **Payroll**, pick the week, click **Pay …** and **Mark as paid** to pay a whole week).
 5. As the member, **Payments** now shows the payment, and those interviews show as **Paid**.
 
 Run the tests with `python manage.py test`.
@@ -55,7 +56,7 @@ Run the tests with `python manage.py test`.
 - **Amount = duration × hourly rate**, rounded to the cent for each interview.
 - **Pay weeks run Monday–Sunday** by default. Change this with `WEEK_START_DAY`.
 - **Rate changes have an effective date.** An interview uses the rate in effect on its date. A member's first rate also covers anything they logged before it was set.
-- **Paid means locked.** When you mark a week as paid, the rate and amount of each interview are saved with the payment. Later rate changes never alter what was already paid. Members can't edit or delete paid interviews. To fix one, undo the payment first.
+- **Paid means locked.** When you mark a week as paid, the rate and amount of each interview are saved with the payment. Later rate changes never alter what was already paid. Members can't edit or delete paid interviews. To fix one, set its status back to **To be paid** (or undo the payment) first.
 - **You pay exactly what you reviewed.** If a member edits, adds or deletes something while you have the payment page open, recording the payment is refused and you're asked to review again. Interviews logged later for an already-paid week show up as a new unpaid amount for that week.
 - Interviews that run past midnight are handled: enter 23:30 → 00:30 and it counts as one hour ending the next day. An interview can't be longer than 12 hours, can't overlap another one from the same member (so double submissions are blocked), and can't be in the future.
 

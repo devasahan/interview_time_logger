@@ -1,5 +1,6 @@
 """Admin pages: overview, team and rates, all interviews, payroll and interview types."""
 
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 from operator import attrgetter
 
@@ -18,11 +19,14 @@ from .forms import ApproveForm, InterviewTypeForm, PayoutForm, RateForm
 from .models import HourlyRate, Interview, InterviewType, Payout
 from .periods import Period, format_range
 from .services import (
+    CHANGED_SINCE_REVIEW,
     ZERO,
     PayoutError,
     RateBook,
     Totals,
     group_for_display,
+    mark_paid,
+    mark_unpaid,
     price_interviews,
     record_payouts,
     set_hourly_rate,
@@ -252,6 +256,7 @@ def interviews(request):
             "groups": group_for_display(period, priced),
             "show_user": selected is None,
             "show_actions": True,
+            "can_set_paid": True,
             **period_context(period),
         },
     )
@@ -302,6 +307,7 @@ def payroll_week(request, start):
             "payouts": Payout.objects.filter(period_start=period.start).select_related("user", "paid_by"),
             "show_user": True,
             "show_actions": True,
+            "can_set_paid": True,
         },
     )
 
@@ -414,6 +420,33 @@ def payout_undo(request, pk):
             "cancel_url": back,
         },
     )
+
+
+@staff_required
+@require_POST
+def interview_set_status(request, pk):
+    """Switch one interview between "To be paid" and "Paid" from any interview list."""
+    interview = get_object_or_404(Interview.objects.select_related("user"), pk=pk)
+    back = safe_next(request, reverse("tracker:manage_interviews"))
+    what = f"{interview.user.display_name}'s interview with {interview.interview_with} on {_long_date(interview.date)}"
+    status = request.POST.get("status")
+
+    if status == "paid" and not interview.is_paid:
+        try:
+            expected = Decimal(request.POST.get("expected_amount", ""))
+        except InvalidOperation:
+            messages.error(request, CHANGED_SINCE_REVIEW)
+            return redirect(back)
+        try:
+            payout = mark_paid(interview, expected_amount=expected, paid_by=request.user)
+        except PayoutError as error:
+            messages.error(request, str(error))
+        else:
+            messages.success(request, f"Marked {what} as paid ({money(payout.amount)}).")
+    elif status == "unpaid" and interview.is_paid:
+        mark_unpaid(interview)
+        messages.success(request, f"{what} is back to “to be paid”.")
+    return redirect(back)
 
 
 @staff_required

@@ -41,6 +41,19 @@ class AccessTests(TestCase):
         for url in self.admin_urls:
             self.assertEqual(self.client.get(url).status_code, 403, url)
 
+    def test_members_cannot_change_pay_status(self):
+        member = make_user()
+        set_rate(member, 20)
+        interview = make_interview(member, day=timezone.localdate())
+        self.client.force_login(member)
+        response = self.client.post(
+            reverse("tracker:manage_interview_status", args=[interview.pk]),
+            {"status": "paid", "expected_amount": "20.00"},
+        )
+        self.assertEqual(response.status_code, 403)
+        interview.refresh_from_db()
+        self.assertFalse(interview.is_paid)
+
     def test_members_cannot_approve_anyone(self):
         pending = make_user("newbie", approved=False)
         self.client.force_login(make_user())
@@ -240,6 +253,44 @@ class AdminFlowTests(TestCase):
         self.client.force_login(self.admin)
         self.client.post(reverse("tracker:manage_payout_undo", args=[payout.pk]))
         self.assertFalse(Payout.objects.exists())
+        interview.refresh_from_db()
+        self.assertFalse(interview.is_paid)
+
+    def test_change_an_interviews_pay_status_from_the_list(self):
+        member = make_user()
+        set_rate(member, 20)
+        interview = make_interview(member, day=timezone.localdate(), start=time(9, 0), end=time(10, 30))
+        interviews_url = reverse("tracker:manage_interviews")
+        status_url = reverse("tracker:manage_interview_status", args=[interview.pk])
+        self.assertContains(self.client.get(interviews_url), status_url)
+
+        response = self.client.post(
+            status_url, {"status": "paid", "expected_amount": "30.00", "next": interviews_url}
+        )
+        self.assertRedirects(response, interviews_url)
+        interview.refresh_from_db()
+        self.assertTrue(interview.is_paid)
+        self.assertEqual(interview.payout.amount, Decimal("30.00"))
+
+        # The member sees it as paid, but can't change it.
+        self.client.force_login(member)
+        history = self.client.get(reverse("tracker:history"))
+        self.assertContains(history, "badge-paid")
+        self.assertNotContains(history, status_url)
+
+        self.client.force_login(self.admin)
+        self.client.post(status_url, {"status": "unpaid", "next": interviews_url})
+        interview.refresh_from_db()
+        self.assertFalse(interview.is_paid)
+        self.assertFalse(Payout.objects.exists())
+
+    def test_pay_status_change_refuses_a_changed_amount(self):
+        member = make_user()
+        set_rate(member, 20)
+        interview = make_interview(member, day=timezone.localdate())
+        url = reverse("tracker:manage_interview_status", args=[interview.pk])
+        self.client.post(url, {"status": "paid", "expected_amount": "99.00"})
+        self.client.post(url, {"status": "paid", "expected_amount": "not-a-number"})
         interview.refresh_from_db()
         self.assertFalse(interview.is_paid)
 

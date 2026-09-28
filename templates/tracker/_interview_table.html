@@ -1,4 +1,4 @@
-{% load tracker_tags %}
+{% load l10n tracker_tags %}
 <div class="table-wrap">
   <table class="table responsive">
     <thead>
@@ -36,13 +36,27 @@
             <div>{{ interview.amount|money }}{% if interview.rate is not None %}<span class="sub">at {{ interview.rate|money }}/h</span>{% endif %}</div>
           </td>
           <td data-label="Status">
-            {% if interview.is_paid %}
-              <span class="badge badge-paid" title="Paid {{ interview.payout.paid_at|date:'M j, Y' }}">Paid</span>
-            {% elif interview.amount is None %}
-              <span class="badge badge-muted" title="No hourly rate set yet">Rate not set</span>
-            {% else %}
-              <span class="badge badge-pending">To be paid</span>
-            {% endif %}
+            <div>
+              {% if can_set_paid and interview.amount is not None %}
+                <form method="post" action="{% url 'tracker:manage_interview_status' interview.pk %}" class="status-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <input type="hidden" name="expected_amount" value="{{ interview.amount|unlocalize }}">
+                  <select name="status" class="status-select{% if interview.is_paid %} is-paid{% endif %}" onchange="this.form.submit()" aria-label="Payment status of the interview with {{ interview.interview_with }} on {{ interview.date|date:'M j' }}">
+                    <option value="unpaid"{% if not interview.is_paid %} selected{% endif %}>To be paid</option>
+                    <option value="paid"{% if interview.is_paid %} selected{% endif %}>Paid</option>
+                  </select>
+                  <noscript><button type="submit" class="btn btn-sm">Save</button></noscript>
+                </form>
+              {% elif interview.is_paid %}
+                <span class="badge badge-paid">Paid</span>
+              {% elif interview.amount is None %}
+                <span class="badge badge-muted" title="No hourly rate set yet">Rate not set</span>
+              {% else %}
+                <span class="badge badge-pending">To be paid</span>
+              {% endif %}
+              {% if interview.is_paid %}<span class="sub">on {{ interview.payout.paid_at|date:"M j, Y" }}</span>{% endif %}
+            </div>
           </td>
           {% if show_actions %}
             <td class="actions">

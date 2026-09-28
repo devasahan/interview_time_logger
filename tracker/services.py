@@ -8,6 +8,7 @@ from itertools import groupby
 from operator import attrgetter
 
 from django.db import transaction
+from django.db.models import Count, Sum
 from django.utils import timezone
 
 from .models import HourlyRate, Interview, Payout
@@ -228,3 +229,33 @@ def undo_payout(payout):
     """Delete a payout and make its interviews unpaid again."""
     Interview.objects.filter(payout=payout).update(payout=None, paid_rate=None, paid_amount=None)
     payout.delete()
+
+
+def mark_paid(interview, *, expected_amount, paid_by):
+    """Record a payment for one interview (the amount the admin saw on screen)."""
+    [payout] = record_payouts(
+        period=Period.week_of(interview.date),
+        interview_ids=[interview.pk],
+        expected_total=expected_amount,
+        paid_by=paid_by,
+    )
+    return payout
+
+
+@transaction.atomic
+def mark_unpaid(interview):
+    """Take one interview out of its payment; the payment shrinks, or goes if it's empty."""
+    if interview.payout_id is None:
+        return
+    payout = Payout.objects.select_for_update().get(pk=interview.payout_id)
+    Interview.objects.filter(pk=interview.pk).update(payout=None, paid_rate=None, paid_amount=None)
+    remaining = payout.interviews.aggregate(
+        count=Count("id"), minutes=Sum("duration_minutes"), amount=Sum("paid_amount")
+    )
+    if not remaining["count"]:
+        payout.delete()
+        return
+    payout.interview_count = remaining["count"]
+    payout.total_minutes = remaining["minutes"]
+    payout.amount = remaining["amount"]
+    payout.save(update_fields=["interview_count", "total_minutes", "amount"])

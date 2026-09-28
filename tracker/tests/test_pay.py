@@ -11,6 +11,8 @@ from tracker.services import (
     Totals,
     amount_for,
     group_for_display,
+    mark_paid,
+    mark_unpaid,
     price_interviews,
     record_payouts,
     set_hourly_rate,
@@ -152,6 +154,27 @@ class PayoutTests(TestCase):
         interview = make_interview(newbie)
         with self.assertRaises(PayoutError):
             self.pay([interview], "0")
+
+    def test_mark_one_interview_paid_then_unpaid(self):
+        payout = mark_paid(self.a1, expected_amount=Decimal("20.00"), paid_by=self.admin)
+        self.assertEqual((payout.amount, payout.interview_count, payout.paid_by), (Decimal("20.00"), 1, self.admin))
+        self.a1.refresh_from_db()
+        self.assertTrue(self.a1.is_paid)
+
+        mark_unpaid(self.a1)
+        self.a1.refresh_from_db()
+        self.assertFalse(self.a1.is_paid)
+        self.assertIsNone(self.a1.paid_amount)
+        self.assertFalse(Payout.objects.exists())
+
+    def test_unmarking_one_interview_shrinks_its_payment(self):
+        [payout] = self.pay([self.a1, self.a2], "30.00")
+        self.a2.refresh_from_db()
+        mark_unpaid(self.a2)
+        payout.refresh_from_db()
+        self.assertEqual((payout.interview_count, payout.total_minutes, payout.amount), (1, 60, Decimal("20.00")))
+        self.a1.refresh_from_db()
+        self.assertTrue(self.a1.is_paid)
 
     def test_undo_makes_interviews_unpaid_again(self):
         [payout] = self.pay([self.s1], "60.00")

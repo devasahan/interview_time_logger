@@ -105,7 +105,7 @@
     <a href="{% url 'tracker:manage_interviews' %}">All interviews →</a>
   </div>
   {% if recent %}
-    {% include "tracker/_interview_table.html" with interviews=recent show_user=True %}
+    {% include "tracker/_interview_table.html" with interviews=recent show_user=True can_set_paid=True %}
   {% else %}
     <div class="empty"><strong>Nothing logged yet</strong>Interviews appear here as your team logs them.</div>
   {% endif %}

@@ -18,6 +18,7 @@ urlpatterns = [
     # Admin
     path("manage/", manage_views.overview, name="manage_overview"),
     path("manage/interviews/", manage_views.interviews, name="manage_interviews"),
+    path("manage/interviews/<int:pk>/status/", manage_views.interview_set_status, name="manage_interview_status"),
     path("manage/team/", manage_views.team, name="manage_team"),
     path("manage/team/<int:pk>/", manage_views.member_detail, name="manage_member"),
     path("manage/team/<int:pk>/approve/", manage_views.member_approve, name="manage_member_approve"),
