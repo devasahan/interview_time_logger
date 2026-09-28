@@ -1,21 +1,23 @@
 {% extends "base.html" %}
+{% load tracker_tags %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="panel confirm">
-  <div class="panel-body">
+<div class="card confirm">
+  <div class="card-body">
+    <span class="confirm-icon">{% icon "triangle-alert" 22 %}</span>
     <h1>{{ title }}</h1>
-    <p class="muted">{{ message }}</p>
+    <p class="page-sub">{{ message }}</p>
     {% if details %}
-      <dl class="details">
+      <dl class="details" style="margin-top: 20px">
         {% for label, value in details %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}
       </dl>
     {% endif %}
-    <form method="post" class="form-actions">
-      {% csrf_token %}
-      <input type="hidden" name="next" value="{{ next }}">
-      <button type="submit" class="btn btn-danger">{{ confirm_label }}</button>
-      <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
-    </form>
   </div>
+  <form method="post" class="form-actions">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn btn-danger">{{ confirm_label }}</button>
+    <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
+  </form>
 </div>
 {% endblock %}

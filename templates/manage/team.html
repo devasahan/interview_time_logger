@@ -2,24 +2,41 @@
 {% load tracker_tags %}
 {% block title %}Team{% endblock %}
 {% block content %}
-<div class="page-header">
+<div class="page-head">
   <div>
     <h1>Team</h1>
-    <p class="muted">New members sign up at <a href="{% url 'accounts:signup' %}">{{ request.scheme }}://{{ request.get_host }}{% url 'accounts:signup' %}</a>. To approve someone, enter their hourly rate next to their name and click <strong>Approve</strong>.</p>
+    <p class="page-sub">To approve someone, enter their hourly rate next to their name and click <strong>Approve</strong>.</p>
   </div>
 </div>
 
-<section class="panel">
+<section class="card">
+  <header class="card-head plain">
+    <div><h2>Invite your team</h2><p class="card-sub">Share this link. New sign-ups show up below, waiting for your approval.</p></div>
+  </header>
+  <div class="card-body">
+    <div class="copy-field">
+      <label class="sr-only" for="signup-link">Sign-up link</label>
+      <input type="text" id="signup-link" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'accounts:signup' %}">
+      <button type="button" class="btn" data-copy="signup-link">{% icon "external-link" 16 %} <span data-copy-label>Copy link</span></button>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <header class="card-head"><div><h2>Members</h2><p class="card-sub">{{ rows|length }} account{{ rows|length|pluralize }}</p></div></header>
   <div class="table-wrap">
     <table class="table responsive">
       <thead>
-        <tr><th>Member</th><th>Status</th><th class="num">Hourly rate</th><th class="num">This week</th><th class="num">To be paid</th><th>Joined</th><th><span class="sr-only">Actions</span></th></tr>
+        <tr><th>Member</th><th>Status</th><th class="num">Hourly rate</th><th class="num">This week</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr>
       </thead>
       <tbody>
         {% for row in rows %}
           <tr{% if row.member.status == "pending" %} class="highlight"{% endif %}>
-            <td data-label="Member">
-              <div><a href="{% url 'tracker:manage_member' row.member.pk %}"><strong>{{ row.member.display_name }}</strong></a><span class="sub">{{ row.member.username }}{% if row.member.email %} · {{ row.member.email }}{% endif %}</span></div>
+            <td class="lead" data-label="Member">
+              <a class="person" href="{% url 'tracker:manage_member' row.member.pk %}">
+                <span class="avatar t{{ row.member|avatar_tone }}">{{ row.member|initials }}</span>
+                <span class="cell-stack"><span class="person-name">{{ row.member.display_name }}</span><span class="sub" title="{{ row.member.username }}{% if row.member.email %} · {{ row.member.email }}{% endif %}">{{ row.member.username }}{% if row.member.email %} · {{ row.member.email }}{% endif %}</span></span>
+              </a>
             </td>
             <td data-label="Status">
               {% if row.member.status == "pending" %}<span class="badge badge-pending">Waiting for approval</span>
@@ -30,14 +47,13 @@
             <td class="num" data-label="Hourly rate">{% if row.rate is not None %}{{ row.rate|money }}/h{% else %}—{% endif %}</td>
             <td class="num" data-label="This week">{{ row.week.minutes|duration }}</td>
             <td class="num" data-label="To be paid">{{ row.unpaid.unpaid|money }}</td>
-            <td data-label="Joined" class="nowrap">{{ row.member.date_joined|date:"M j, Y" }}</td>
             <td class="actions">
               {% if row.member.status == "pending" %}
                 <form method="post" action="{% url 'tracker:manage_member_approve' row.member.pk %}" class="approve-inline" novalidate>
                   {% csrf_token %}
                   <label class="sr-only" for="rate-{{ row.member.pk }}">Hourly rate for {{ row.member.display_name }}</label>
                   <input type="number" id="rate-{{ row.member.pk }}" name="rate" min="0" step="0.01" inputmode="decimal" placeholder="Rate / h">
-                  <button type="submit" class="btn btn-sm btn-primary">Approve</button>
+                  <button type="submit" class="btn btn-sm btn-primary">{% icon "user-check" 16 %} Approve</button>
                 </form>
               {% else %}
                 <a class="btn btn-sm" href="{% url 'tracker:manage_member' row.member.pk %}">Manage</a>

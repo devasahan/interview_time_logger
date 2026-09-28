@@ -2,58 +2,92 @@
 {% load tracker_tags %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="page-header">
+<div class="page-head">
   <div>
-    <h1>Hi, {{ user.first_name|default:user.username }}</h1>
-    <p class="muted">{{ today|date:"l, F j, Y" }}</p>
+    <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
+    <p class="page-sub">{{ today|date:"l, F j, Y" }}</p>
   </div>
   {% if user.can_log_interviews %}
-    <div class="page-actions"><a class="btn btn-primary" href="{% url 'tracker:interview_create' %}">+ Log interview</a></div>
+    <div class="page-actions">
+      <a class="btn" href="{% url 'tracker:history' %}">{% icon "calendar-days" %} History</a>
+      <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}">{% icon "plus" %} Log interview</a>
+    </div>
   {% endif %}
 </div>
 
 {% if not user.can_log_interviews %}
-  <div class="alert alert-warning" style="margin-bottom:24px">
-    <p><strong>Your account is waiting for approval.</strong></p>
-    <p>An admin needs to approve your account and set your hourly rate. After that you can start logging interviews here.</p>
+  <div class="alert alert-warning banner">
+    <span class="alert-icon">{% icon "hourglass" 20 %}</span>
+    <div class="alert-body">
+      <p class="alert-title">Your account is waiting for approval.</p>
+      <p>An admin needs to approve your account and set your hourly rate. After that you can start logging interviews here.</p>
+    </div>
   </div>
 {% endif %}
 
-<section class="stats">
-  <div class="stat">
-    <span class="stat-label">This week</span>
-    <span class="stat-value">{{ week_totals.minutes|duration }}</span>
-    <span class="stat-sub">{{ week_totals.earned|money }} earned · {{ week_totals.count }} interview{{ week_totals.count|pluralize }}</span>
+<section class="kpis" aria-label="Summary">
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">This week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-value">{{ week_totals.minutes|duration }}</div>
+    <div class="kpi-foot">{{ week_totals.earned|money }} earned · {{ week_totals.count }} interview{{ week_totals.count|pluralize }}</div>
   </div>
-  <div class="stat">
-    <span class="stat-label">This month</span>
-    <span class="stat-value">{{ month_totals.earned|money }}</span>
-    <span class="stat-sub">{{ month_totals.minutes|duration }} · {{ month_totals.paid|money }} paid · {{ month_totals.unpaid|money }} to be paid</span>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">This month</span><span class="kpi-icon tone-sky">{% icon "coins" %}</span></div>
+    <div class="kpi-value">{{ month_totals.earned|money }}</div>
+    <div class="kpi-foot">{{ month_totals.minutes|duration }} · {{ month_totals.paid|money }} paid · {{ month_totals.unpaid|money }} to be paid</div>
   </div>
-  <div class="stat stat-accent">
-    <span class="stat-label">To be paid</span>
-    <span class="stat-value">{{ unpaid_totals.unpaid|money }}</span>
-    <span class="stat-sub">{% if unpaid_totals.count %}{{ unpaid_totals.count }} unpaid interview{{ unpaid_totals.count|pluralize }} over {{ unpaid_weeks }} week{{ unpaid_weeks|pluralize }}{% else %}You're all paid up{% endif %}</span>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
+    <div class="kpi-value">{{ unpaid_totals.unpaid|money }}</div>
+    <div class="kpi-foot">{% if unpaid_totals.count %}{{ unpaid_totals.count }} unpaid interview{{ unpaid_totals.count|pluralize }} over {{ unpaid_weeks }} week{{ unpaid_weeks|pluralize }}{% else %}You're all paid up{% endif %}</div>
   </div>
-  <div class="stat stat-good">
-    <span class="stat-label">Your hourly rate</span>
-    <span class="stat-value">{% if rate is not None %}{{ rate|money }}<span class="stat-sub">/h</span>{% else %}Not set{% endif %}</span>
-    <span class="stat-sub">{% if last_payout %}Last paid {{ last_payout.amount|money }} on {{ last_payout.paid_at|date:"M j" }}{% else %}Set by your admin{% endif %}</span>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Your hourly rate</span><span class="kpi-icon tone-green">{% icon "wallet" %}</span></div>
+    <div class="kpi-value">{% if rate is not None %}{{ rate|money }}<span class="kpi-unit">/h</span>{% else %}Not set{% endif %}</div>
+    <div class="kpi-foot">{% if last_payout %}Last paid {{ last_payout.amount|money }} on {{ last_payout.paid_at|date:"M j" }}{% else %}Set by your admin{% endif %}</div>
   </div>
 </section>
 
-<section class="panel">
-  <div class="panel-header">
-    <h2>Recent interviews</h2>
-    <a href="{% url 'tracker:history' %}">See week and month history →</a>
-  </div>
-  {% if recent %}
-    {% include "tracker/_interview_table.html" with interviews=recent show_actions=True %}
-  {% else %}
-    <div class="empty">
-      <strong>No interviews logged yet</strong>
-      {% if user.can_log_interviews %}Use “Log interview” after each interview. It takes a few seconds.{% else %}You can start once your account is approved.{% endif %}
-    </div>
-  {% endif %}
-</section>
+<div class="grid-split">
+  <section class="card">
+    <header class="card-head">
+      <div><h2>Your earnings</h2><p class="card-sub">Per pay week, last 8 weeks</p></div>
+      <a class="more" href="{% url 'tracker:payments' %}">Payments {% icon "arrow-right" 16 %}</a>
+    </header>
+    {% if chart %}
+      {% include "includes/chart.html" with chart_title="Your earnings per pay week, last 8 weeks" %}
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Your weekly earnings appear here once you log interviews." %}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <header class="card-head">
+      <div><h2>Recent interviews</h2><p class="card-sub">Your last {{ recent|length }} logged</p></div>
+      <a class="more" href="{% url 'tracker:history' %}">See all {% icon "arrow-right" 16 %}</a>
+    </header>
+    {% if recent %}
+      <ul class="feed">
+        {% for interview in recent %}
+          <li class="feed-item">
+            <span class="feed-icon">{% icon "calendar-check" 16 %}</span>
+            <div class="feed-main">
+              <p class="feed-title">{{ interview.interview_with }} <span class="muted">· {{ interview.role }}</span></p>
+              <p class="feed-sub">{{ interview.date|date:"D, M j" }} · {{ interview.start_time|time:"H:i" }}–{{ interview.end_time|time:"H:i" }} · {{ interview.duration_minutes|duration }} · {{ interview.interview_type.name }}</p>
+            </div>
+            <div class="feed-side">
+              <span class="strong">{{ interview.amount|money }}</span>
+              {% if interview.is_paid %}<span class="badge badge-paid">Paid</span>{% elif interview.amount is None %}<span class="badge badge-muted">Rate not set</span>{% else %}<span class="badge badge-pending">To be paid</span>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% elif user.can_log_interviews %}
+      {% url 'tracker:interview_create' as create_url %}
+      {% include "includes/empty.html" with empty_icon="calendar-plus" empty_title="No interviews logged yet" empty_text="Log each interview right after it ends. It only takes a few seconds." empty_url=create_url empty_action="Log interview" %}
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="hourglass" empty_title="No interviews logged yet" empty_text="You can start once your account is approved." %}
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

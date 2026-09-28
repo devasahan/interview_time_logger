@@ -16,7 +16,16 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from .forms import InterviewForm
 from .models import Interview
 from .periods import WEEK, Period, parse_date
-from .services import ZERO, RateBook, Totals, group_for_display, price_interviews, summarize_weeks
+from .services import (
+    ZERO,
+    RateBook,
+    Totals,
+    chart_weeks,
+    group_for_display,
+    price_interviews,
+    summarize_weeks,
+    weekly_chart,
+)
 from .templatetags.tracker_tags import duration
 
 
@@ -58,7 +67,8 @@ def home(request):
     week, month = Period.week_of(today), Period.month_of(today)
     rate_book = RateBook([user.pk])
 
-    recent_range = (min(week.start, month.start), max(week.end, month.end))
+    weeks = chart_weeks(today)
+    recent_range = (min(week.start, month.start, weeks[0].start), max(week.end, month.end))
     in_range = price_interviews(user.interviews.filter(date__range=recent_range), rate_book)
     unpaid = price_interviews(user.interviews.filter(payout__isnull=True), rate_book)
     recent = price_interviews(
@@ -78,6 +88,7 @@ def home(request):
             "unpaid_weeks": len(summarize_weeks(unpaid)),
             "last_payout": user.payouts.first(),
             "recent": recent,
+            "chart": weekly_chart(in_range, weeks),
         },
     )
 
@@ -149,7 +160,7 @@ def interview_create(request):
     return render(
         request,
         "tracker/interview_form.html",
-        {"nav": "history", "form": form, "cancel_url": reverse("tracker:history")},
+        {"nav": "log", "form": form, "cancel_url": reverse("tracker:history")},
     )
 
 

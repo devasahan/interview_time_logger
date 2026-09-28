@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block body %}
+<div class="auth">
+  <aside class="auth-aside">
+    <div class="auth-logo"><span class="brand-mark">{% icon "timer" 18 %}</span>{{ brand_name }}</div>
+    <div class="auth-pitch">
+      <h1>Log interview time. Get paid on schedule.</h1>
+      <p>One place for your team's interview hours, hourly rates and weekly payments.</p>
+      <ul class="auth-points">
+        <li><span class="tick">{% icon "check" 14 %}</span><div><strong>Log a call in seconds</strong><span>Date, time, role and interview type. The duration is worked out for you.</span></div></li>
+        <li><span class="tick">{% icon "check" 14 %}</span><div><strong>See what you've earned</strong><span>Weekly and monthly totals, split into paid and still to be paid.</span></div></li>
+        <li><span class="tick">{% icon "check" 14 %}</span><div><strong>Paid every week</strong><span>Every payment is recorded, so you always know where you stand.</span></div></li>
+      </ul>
+    </div>
+    <p class="auth-foot">© {% now "Y" %} {{ brand_name }}</p>
+  </aside>
+  <main class="auth-main">
+    <div class="auth-card{% block auth_card_class %}{% endblock %}">
+      <div class="auth-mobile-logo"><span class="brand-mark">{% icon "timer" 18 %}</span>{{ brand_name }}</div>
+      {% include "includes/messages.html" %}
+      {% block auth_content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

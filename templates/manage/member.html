@@ -2,115 +2,123 @@
 {% load tracker_tags %}
 {% block title %}{{ member.display_name }}{% endblock %}
 {% block content %}
-<div class="page-header">
+<div class="page-head">
   <div>
-    <p class="eyebrow"><a href="{% url 'tracker:manage_team' %}">← Team</a></p>
-    <h1>{{ member.display_name }}
-      {% if member.status == "pending" %}<span class="badge badge-pending">Waiting for approval</span>
-      {% elif member.status == "active" %}<span class="badge badge-active">Active</span>
-      {% elif member.status == "admin" %}<span class="badge badge-admin">Admin</span>
-      {% else %}<span class="badge badge-deactivated">Deactivated</span>{% endif %}
-    </h1>
-    <p class="muted">{{ member.username }}{% if member.email %} · {{ member.email }}{% endif %} · joined {{ member.date_joined|date:"M j, Y" }}</p>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'tracker:manage_team' %}">Team</a><span>/</span><span>{{ member.display_name }}</span></nav>
+    <div class="profile-head">
+      <span class="avatar avatar-lg t{{ member|avatar_tone }}">{{ member|initials }}</span>
+      <div>
+        <div class="title-row">
+          <h1>{{ member.display_name }}</h1>
+          {% if member.status == "pending" %}<span class="badge badge-pending">Waiting for approval</span>
+          {% elif member.status == "active" %}<span class="badge badge-active">Active</span>
+          {% elif member.status == "admin" %}<span class="badge badge-admin">Admin</span>
+          {% else %}<span class="badge badge-deactivated">Deactivated</span>{% endif %}
+        </div>
+        <p class="page-sub">{{ member.username }}{% if member.email %} · {{ member.email }}{% endif %} · joined {{ member.date_joined|date:"M j, Y" }}</p>
+      </div>
+    </div>
   </div>
   <div class="page-actions">
-    <a class="btn" href="{% url 'tracker:manage_interviews' %}?user={{ member.pk }}">Weekly &amp; monthly history</a>
+    <a class="btn" href="{% url 'tracker:manage_interviews' %}?user={{ member.pk }}">{% icon "calendar-days" %} Weekly &amp; monthly history</a>
   </div>
 </div>
 
 {% if member.status == "pending" %}
-  <div class="alert alert-warning" style="margin-bottom:24px">
-    <p><strong>{{ member.display_name }} signed up and is waiting for approval.</strong> Set their hourly rate below to approve them. They can start logging interviews right away.</p>
+  <div class="alert alert-warning banner">
+    <span class="alert-icon">{% icon "user-plus" 20 %}</span>
+    <div class="alert-body">
+      <p class="alert-title">{{ member.display_name }} signed up and is waiting for approval.</p>
+      <p>Set their hourly rate below to approve them. They can start logging interviews right away.</p>
+    </div>
   </div>
 {% endif %}
 
-<section class="stats">
-  <div class="stat stat-good">
-    <span class="stat-label">Hourly rate</span>
-    <span class="stat-value">{% if rate is not None %}{{ rate|money }}<span class="stat-sub">/h</span>{% else %}Not set{% endif %}</span>
+<section class="kpis" aria-label="Summary">
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Hourly rate</span><span class="kpi-icon tone-green">{% icon "wallet" %}</span></div>
+    <div class="kpi-value">{% if rate is not None %}{{ rate|money }}<span class="kpi-unit">/h</span>{% else %}Not set{% endif %}</div>
+    <div class="kpi-foot">{% if rate is None %}set it below{% elif rate_since %}since {{ rate_since|date:"M j, Y" }}{% else %}first rate{% endif %}{% if next_rate %} · {{ next_rate.rate|money }}/h from {{ next_rate.effective_from|date:"M j" }}{% endif %}</div>
   </div>
-  <div class="stat">
-    <span class="stat-label">This week</span>
-    <span class="stat-value">{{ week_totals.minutes|duration }}</span>
-    <span class="stat-sub">{{ week_totals.count }} interview{{ week_totals.count|pluralize }} · {{ week_totals.earned|money }}</span>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">This week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-value">{{ week_totals.minutes|duration }}</div>
+    <div class="kpi-foot">{{ week_totals.count }} interview{{ week_totals.count|pluralize }} · {{ week_totals.earned|money }}</div>
   </div>
-  <div class="stat">
-    <span class="stat-label">This month</span>
-    <span class="stat-value">{{ month_totals.earned|money }}</span>
-    <span class="stat-sub">{{ month_totals.minutes|duration }} · {{ month_totals.paid|money }} paid</span>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">This month</span><span class="kpi-icon tone-sky">{% icon "coins" %}</span></div>
+    <div class="kpi-value">{{ month_totals.earned|money }}</div>
+    <div class="kpi-foot">{{ month_totals.minutes|duration }} · {{ month_totals.paid|money }} paid</div>
   </div>
-  <div class="stat stat-accent">
-    <span class="stat-label">To be paid</span>
-    <span class="stat-value">{{ unpaid_totals.unpaid|money }}</span>
-    <span class="stat-sub">{{ unpaid_weeks|length }} week{{ unpaid_weeks|length|pluralize }}{% if unpaid_totals.unpriced %} · {{ unpaid_totals.unpriced }} without a rate{% endif %}</span>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
+    <div class="kpi-value">{{ unpaid_totals.unpaid|money }}</div>
+    <div class="kpi-foot">{{ unpaid_weeks|length }} week{{ unpaid_weeks|length|pluralize }}{% if unpaid_totals.unpriced %} · {{ unpaid_totals.unpriced }} without a rate{% endif %}</div>
   </div>
 </section>
 
-<div class="columns">
-  <section class="panel">
-    <div class="panel-header"><h2>{% if member.status == "pending" %}Approve and set hourly rate{% else %}Hourly rate{% endif %}</h2></div>
-    <div class="panel-body">
-      <form method="post" novalidate>
-        {% csrf_token %}
+<div class="grid-split">
+  <section class="card">
+    <header class="card-head"><div><h2>{% if member.status == "pending" %}Approve and set hourly rate{% else %}Hourly rate{% endif %}</h2><p class="card-sub">Only admins can set or change rates.</p></div></header>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="card-body">
         {% include "includes/form_errors.html" %}
-        <div class="grid-2">
+        <div class="form-grid cols-2">
           {% include "includes/field.html" with field=form.rate %}
           {% include "includes/field.html" with field=form.effective_from %}
         </div>
-        <button type="submit" class="btn btn-primary">{% if member.status == "pending" %}Approve at this rate{% else %}Save rate{% endif %}</button>
-      </form>
-    </div>
-    {% if rates %}
-      <div class="table-wrap">
-        <table class="table responsive">
-          <thead><tr><th>Effective from</th><th class="num">Rate</th><th>Set by</th><th><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            {% for item in rates %}
-              <tr>
-                <td data-label="Effective from">{{ item.effective_from|date:"M j, Y" }}{% if forloop.last %} <span class="sub">first rate: also covers earlier interviews</span>{% endif %}</td>
-                <td class="num" data-label="Rate">{{ item.rate|money }}/h</td>
-                <td data-label="Set by">{{ item.set_by.display_name|default:"—" }}</td>
-                <td class="actions">
-                  <form method="post" action="{% url 'tracker:manage_member_rate_delete' member.pk item.pk %}" onsubmit="return confirm('Remove this rate? Unpaid interviews will be recalculated.');">
-                    {% csrf_token %}
-                    <button type="submit" class="link-button danger">Remove</button>
-                  </form>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <button type="submit" class="btn btn-primary">{% if member.status == "pending" %}{% icon "user-check" %} Approve at this rate{% else %}{% icon "check" %} Save rate{% endif %}</button>
       </div>
+    </form>
+    {% if rates %}
+      <h3 class="list-head">Rate history</h3>
+      <ul class="feed">
+        {% for item in rates %}
+          <li class="feed-item">
+            <span class="feed-icon tone-green">{% icon "banknote" 16 %}</span>
+            <div class="feed-main">
+              <p class="feed-title">{{ item.rate|money }}/h</p>
+              <p class="feed-sub">From {{ item.effective_from|date:"M j, Y" }}{% if item.set_by %} · set by {{ item.set_by.display_name }}{% endif %}</p>
+              {% if forloop.last %}<p class="feed-sub">First rate, also covers earlier interviews</p>{% endif %}
+            </div>
+            <form method="post" action="{% url 'tracker:manage_member_rate_delete' member.pk item.pk %}" onsubmit="return confirm('Remove this rate? Unpaid interviews will be recalculated.');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost btn-sm danger" aria-label="Remove the {{ item.rate|money }}/h rate from {{ item.effective_from|date:'M j, Y' }}">{% icon "trash-2" 16 %} Remove</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
     {% endif %}
   </section>
 
-  <div>
-    <section class="panel">
-      <div class="panel-header"><h2>Unpaid weeks</h2></div>
+  <div class="stack-col">
+    <section class="card">
+      <header class="card-head"><div><h2>Unpaid weeks</h2><p class="card-sub">Pay one week at a time</p></div></header>
       {% if unpaid_weeks %}
-        <div class="table-wrap">
-          <table class="table responsive">
-            <thead><tr><th>Pay week</th><th class="num">Time</th><th class="num">Amount</th><th><span class="sr-only">Actions</span></th></tr></thead>
-            <tbody>
-              {% for summary in unpaid_weeks %}
-                <tr>
-                  <td data-label="Pay week">{{ summary.period.label }}</td>
-                  <td class="num" data-label="Time">{{ summary.totals.minutes|duration }}</td>
-                  <td class="num" data-label="Amount">{{ summary.totals.unpaid|money }}{% if summary.totals.unpriced %} <span class="badge badge-muted">rate not set</span>{% endif %}</td>
-                  <td class="actions"><a class="btn btn-sm" href="{% url 'tracker:manage_payroll_pay' summary.period.start %}?user={{ member.pk }}">Pay</a></td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+        <ul class="feed">
+          {% for summary in unpaid_weeks %}
+            <li class="feed-item">
+              <span class="feed-icon tone-amber">{% icon "calendar-clock" 16 %}</span>
+              <div class="feed-main">
+                <p class="feed-title">{{ summary.period.label }}</p>
+                <p class="feed-sub">{{ summary.totals.count }} interview{{ summary.totals.count|pluralize }} · {{ summary.totals.minutes|duration }}{% if summary.totals.unpriced %} · rate not set{% endif %}</p>
+              </div>
+              <div class="feed-side">
+                <span class="strong">{{ summary.totals.unpaid|money }}</span>
+                <a class="btn btn-sm" href="{% url 'tracker:manage_payroll_pay' summary.period.start %}?user={{ member.pk }}">Pay</a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
       {% else %}
-        <div class="empty">Nothing waiting to be paid.</div>
+        {% include "includes/empty.html" with empty_icon="circle-check" empty_title="All paid up" empty_text="Nothing waiting to be paid." %}
       {% endif %}
     </section>
 
-    <section class="panel">
-      <div class="panel-header"><h2>Account</h2></div>
-      <div class="panel-body">
+    <section class="card">
+      <header class="card-head"><div><h2>Account</h2></div></header>
+      <div class="card-body">
         {% if is_self %}
           <p class="muted">This is your own account.</p>
         {% else %}
@@ -118,25 +126,28 @@
             {% csrf_token %}
             {% if member.is_active %}
               <p class="muted">Deactivated members can't sign in. Their interviews and payments are kept, so you can still pay what they're owed.</p>
-              <button type="submit" class="btn btn-danger">Deactivate account</button>
+              <button type="submit" class="btn btn-danger" style="margin-top: 14px">{% icon "lock" %} Deactivate account</button>
             {% else %}
               <p class="muted">This account is deactivated and can't sign in.</p>
-              <button type="submit" class="btn">Reactivate account</button>
+              <button type="submit" class="btn" style="margin-top: 14px">{% icon "user-check" %} Reactivate account</button>
             {% endif %}
           </form>
         {% endif %}
-        <p class="muted" style="margin-top:16px">Forgot their password? Set a new one in the <a href="{% url 'admin:accounts_user_change' member.pk %}">Django admin</a>.</p>
+        <div class="rate-note" style="margin-top: 18px">{% icon "key-round" 16 %}<span>Forgot their password? Set a new one in the <a href="{% url 'admin:accounts_user_change' member.pk %}">Django admin</a>.</span></div>
       </div>
     </section>
   </div>
 </div>
 
-<section class="panel">
-  <div class="panel-header"><h2>Recent payments</h2><a href="{% url 'tracker:manage_payroll' %}">Payroll →</a></div>
+<section class="card">
+  <header class="card-head">
+    <div><h2>Recent payments</h2><p class="card-sub">The last 10 payments to {{ member.display_name }}</p></div>
+    <a class="more" href="{% url 'tracker:manage_payroll' %}">Payroll {% icon "arrow-right" 16 %}</a>
+  </header>
   {% if payouts %}
     {% include "includes/payout_table.html" with payouts=payouts show_undo=True %}
   {% else %}
-    <div class="empty">No payments recorded yet.</div>
+    {% include "includes/empty.html" with empty_icon="receipt" empty_title="No payments recorded yet" %}
   {% endif %}
 </section>
 {% endblock %}

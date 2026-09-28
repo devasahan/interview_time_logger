@@ -37,6 +37,7 @@ class SignUpView(FormView):
 class PasswordChangeView(auth_views.PasswordChangeView):
     template_name = "accounts/password_change.html"
     success_url = reverse_lazy("tracker:home")
+    extra_context = {"nav": "password"}
 
     def form_valid(self, form):
         messages.success(self.request, "Your password was changed.")

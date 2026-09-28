@@ -3,8 +3,8 @@
   <table class="table responsive">
     <thead>
       <tr>
-        <th>Paid on</th>
         {% if show_member %}<th>Member</th>{% endif %}
+        <th>Paid on</th>
         <th>Pay week</th>
         <th class="num">Interviews</th>
         <th class="num">Time</th>
@@ -16,17 +16,26 @@
     <tbody>
       {% for payout in payouts %}
         <tr>
-          <td data-label="Paid on">{{ payout.paid_at|date:"M j, Y" }}</td>
-          {% if show_member %}<td data-label="Member"><a href="{% url 'tracker:manage_member' payout.user_id %}">{{ payout.user.display_name }}</a></td>{% endif %}
-          <td data-label="Pay week">
+          {% if show_member %}
+            <td class="lead" data-label="Member">
+              <a class="person" href="{% url 'tracker:manage_member' payout.user_id %}">
+                <span class="avatar avatar-sm t{{ payout.user|avatar_tone }}">{{ payout.user|initials }}</span>
+                <span class="person-name">{{ payout.user.display_name }}</span>
+              </a>
+            </td>
+          {% endif %}
+          <td data-label="Paid on" class="nowrap{% if not show_member %} lead{% endif %}"><span class="strong">{{ payout.paid_at|date:"M j, Y" }}</span></td>
+          <td data-label="Pay week" class="nowrap">
             {% if show_undo %}<a href="{% url 'tracker:manage_payroll_week' payout.period_start %}">{{ payout.period_label }}</a>{% else %}{{ payout.period_label }}{% endif %}
           </td>
           <td class="num" data-label="Interviews">{{ payout.interview_count }}</td>
           <td class="num" data-label="Time">{{ payout.total_minutes|duration }}</td>
-          <td class="num" data-label="Amount"><strong>{{ payout.amount|money }}</strong></td>
+          <td class="num" data-label="Amount"><span class="strong">{{ payout.amount|money }}</span></td>
           <td data-label="Note">{{ payout.note|default:"—" }}</td>
           {% if show_undo %}
-            <td class="actions"><a class="danger" href="{% url 'tracker:manage_payout_undo' payout.pk %}?next={{ request.get_full_path|urlencode }}">Undo</a></td>
+            <td class="actions">
+              <a class="btn btn-ghost btn-sm danger" href="{% url 'tracker:manage_payout_undo' payout.pk %}?next={{ request.get_full_path|urlencode }}">{% icon "undo-2" 16 %} Undo</a>
+            </td>
           {% endif %}
         </tr>
       {% endfor %}

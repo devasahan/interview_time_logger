@@ -6,8 +6,7 @@
         {% if show_user %}<th>Member</th>{% endif %}
         <th>When</th>
         <th class="num">Duration</th>
-        <th>Interview with</th>
-        <th>Role</th>
+        <th>Interview</th>
         <th>Type</th>
         <th class="num">Amount</th>
         <th>Status</th>
@@ -18,25 +17,36 @@
       {% for interview in interviews %}
         <tr>
           {% if show_user %}
-            <td data-label="Member"><a href="{% url 'tracker:manage_member' interview.user_id %}">{{ interview.user.display_name }}</a></td>
+            <td class="lead" data-label="Member">
+              <a class="person" href="{% url 'tracker:manage_member' interview.user_id %}">
+                <span class="avatar avatar-sm t{{ interview.user|avatar_tone }}">{{ interview.user|initials }}</span>
+                <span class="person-name">{{ interview.user.display_name }}</span>
+              </a>
+            </td>
           {% endif %}
-          <td data-label="When">
-            <div>
-              <span class="nowrap">{{ interview.date|date:"D, M j" }}</span>
-              <span class="sub nowrap">{{ interview.start_time|time:"H:i" }}–{{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %} <span class="tag" title="Ended the next day">+1 day</span>{% endif %}</span>
+          <td data-label="When"{% if not show_user %} class="lead"{% endif %}>
+            <div class="cell-stack">
+              <span class="strong nowrap">{{ interview.date|date:"D, M j" }}</span>
+              <span class="sub nowrap">{{ interview.start_time|time:"H:i" }} – {{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %}<span class="tag" title="Ended the next day">+1 day</span>{% endif %}</span>
             </div>
           </td>
           <td data-label="Duration" class="num">{{ interview.duration_minutes|duration }}</td>
-          <td data-label="Interview with">
-            <div>{{ interview.interview_with }}{% if interview.notes %}<span class="sub" title="{{ interview.notes }}">{{ interview.notes|truncatechars:70 }}</span>{% endif %}</div>
+          <td data-label="Interview">
+            <div class="cell-stack">
+              <span class="strong">{{ interview.interview_with }}</span>
+              <span class="sub">{{ interview.role }}</span>
+              {% if interview.notes %}<span class="sub" title="{{ interview.notes }}">{{ interview.notes|truncatechars:60 }}</span>{% endif %}
+            </div>
           </td>
-          <td data-label="Role">{{ interview.role }}</td>
           <td data-label="Type"><span class="chip">{{ interview.interview_type.name }}</span></td>
           <td data-label="Amount" class="num">
-            <div>{{ interview.amount|money }}{% if interview.rate is not None %}<span class="sub">at {{ interview.rate|money }}/h</span>{% endif %}</div>
+            <div class="cell-stack">
+              <span class="strong">{{ interview.amount|money }}</span>
+              {% if interview.rate is not None %}<span class="sub">{{ interview.rate|money }}/h</span>{% endif %}
+            </div>
           </td>
           <td data-label="Status">
-            <div>
+            <div class="cell-stack">
               {% if can_set_paid and interview.amount is not None %}
                 <form method="post" action="{% url 'tracker:manage_interview_status' interview.pk %}" class="status-form">
                   {% csrf_token %}
@@ -49,18 +59,20 @@
                   <noscript><button type="submit" class="btn btn-sm">Save</button></noscript>
                 </form>
               {% elif interview.is_paid %}
-                <span class="badge badge-paid">Paid</span>
+                <span><span class="badge badge-paid">Paid</span></span>
               {% elif interview.amount is None %}
-                <span class="badge badge-muted" title="No hourly rate set yet">Rate not set</span>
+                <span><span class="badge badge-muted" title="No hourly rate set yet">Rate not set</span></span>
               {% else %}
-                <span class="badge badge-pending">To be paid</span>
+                <span><span class="badge badge-pending">To be paid</span></span>
               {% endif %}
-              {% if interview.is_paid %}<span class="sub">on {{ interview.payout.paid_at|date:"M j, Y" }}</span>{% endif %}
+              {% if interview.is_paid %}<span class="sub nowrap" title="Paid on {{ interview.payout.paid_at|date:'M j, Y' }}">on {{ interview.payout.paid_at|date:"M j" }}</span>{% endif %}
             </div>
           </td>
           {% if show_actions %}
             <td class="actions">
-              {% if not interview.is_paid %}<a href="{% url 'tracker:interview_edit' interview.pk %}?next={{ request.get_full_path|urlencode }}">Edit</a>{% endif %}
+              {% if not interview.is_paid %}
+                <a class="btn btn-ghost btn-sm btn-icon" href="{% url 'tracker:interview_edit' interview.pk %}?next={{ request.get_full_path|urlencode }}" title="Edit" aria-label="Edit the interview with {{ interview.interview_with }} on {{ interview.date|date:'M j' }}">{% icon "pencil" 16 %}<span class="stacked-only">Edit</span></a>
+              {% endif %}
             </td>
           {% endif %}
         </tr>

@@ -1,5 +1,7 @@
+{% load tracker_tags %}
 {% if form.non_field_errors %}
-  <div class="alert alert-error" role="alert">
-    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+  <div class="alert alert-error banner" role="alert">
+    <span class="alert-icon">{% icon "circle-x" 20 %}</span>
+    <div class="alert-body">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
   </div>
 {% endif %}

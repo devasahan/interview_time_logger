@@ -24,6 +24,7 @@ from .services import (
     PayoutError,
     RateBook,
     Totals,
+    chart_weeks,
     group_for_display,
     mark_paid,
     mark_unpaid,
@@ -34,6 +35,7 @@ from .services import (
     totals_by_member,
     totals_by_user,
     undo_payout,
+    weekly_chart,
 )
 from .templatetags.tracker_tags import money
 from .views import period_context, safe_next
@@ -75,7 +77,11 @@ def overview(request):
     week, month = Period.week_of(today), Period.month_of(today)
     rate_book = RateBook()
 
-    week_interviews = price_interviews(Interview.objects.filter(date__range=(week.start, week.end)), rate_book)
+    weeks = chart_weeks(today)
+    chart_interviews = price_interviews(
+        Interview.objects.filter(date__range=(weeks[0].start, weeks[-1].end)), rate_book
+    )
+    week_interviews = [interview for interview in chart_interviews if week.contains(interview.date)]
     unpaid = price_interviews(Interview.objects.filter(payout__isnull=True), rate_book)
     week_by_user, unpaid_by_user = totals_by_user(week_interviews), totals_by_user(unpaid)
 
@@ -109,6 +115,7 @@ def overview(request):
             "rows": rows,
             "pending_members": [member for member in members if not member.is_approved],
             "recent": recent,
+            "chart": weekly_chart(chart_interviews, weeks),
         },
     )
 
@@ -172,6 +179,9 @@ def member_detail(request, pk):
         rate_book,
     )
     unpaid = price_interviews(member.interviews.filter(payout__isnull=True), rate_book)
+    rates = list(member.rates.select_related("set_by").order_by("-effective_from"))
+    started = [item for item in rates if item.effective_from <= today]
+    upcoming = [item for item in rates if item.effective_from > today]
     return render(
         request,
         "manage/member.html",
@@ -180,7 +190,9 @@ def member_detail(request, pk):
             "member": member,
             "rate": current_rate,
             "form": form,
-            "rates": member.rates.select_related("set_by").order_by("-effective_from"),
+            "rates": rates,
+            "rate_since": started[0].effective_from if started else None,
+            "next_rate": upcoming[-1] if started and upcoming else None,
             "week_totals": Totals.of(i for i in in_range if week.contains(i.date)),
             "month_totals": Totals.of(i for i in in_range if month.contains(i.date)),
             "unpaid_totals": Totals.of(unpaid),

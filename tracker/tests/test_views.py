@@ -228,6 +228,17 @@ class AdminFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(HourlyRate.objects.exists())
 
+    def test_member_page_shows_the_rate_in_effect_and_the_next_change(self):
+        member = make_user()
+        today = timezone.localdate()
+        set_rate(member, 20, today - timedelta(days=30))
+        set_rate(member, 30, today + timedelta(days=7))
+        response = self.client.get(reverse("tracker:manage_member", args=[member.pk]))
+        self.assertEqual(response.context["rate"], Decimal("20"))
+        self.assertEqual(response.context["rate_since"], today - timedelta(days=30))
+        self.assertEqual(response.context["next_rate"].rate, Decimal("30"))
+        self.assertContains(response, "$30.00/h from")
+
     def test_pay_a_week_then_undo(self):
         member = make_user()
         set_rate(member, 20)

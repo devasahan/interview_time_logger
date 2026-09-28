@@ -3,7 +3,8 @@
 from bisect import bisect_right
 from collections import defaultdict
 from dataclasses import dataclass, field
-from decimal import ROUND_HALF_UP, Decimal
+from datetime import timedelta
+from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from itertools import groupby
 from operator import attrgetter
 
@@ -162,6 +163,69 @@ def summarize_weeks(interviews):
         summary.totals.add(interview)
         summary.member_ids.add(interview.user_id)
     return [weeks[start] for start in sorted(weeks)]
+
+
+@dataclass
+class ChartBar:
+    period: Period
+    totals: Totals
+    height: str  # CSS percentage of the axis maximum
+    is_current: bool
+
+
+def _nice_step(raw):
+    """Smallest 1/2/2.5/5 x 10^n step that is at least ``raw``."""
+    magnitude = Decimal(10) ** raw.log10().to_integral_value(rounding=ROUND_FLOOR)
+    for factor in (Decimal(1), Decimal(2), Decimal("2.5"), Decimal(5), Decimal(10)):
+        if raw <= factor * magnitude:
+            return factor * magnitude
+
+
+def chart_weeks(today, count=8):
+    """The last ``count`` pay weeks, oldest first, ending with the current one."""
+    current = Period.week_of(today)
+    return [Period.week_of(current.start - timedelta(days=7 * back)) for back in range(count - 1, -1, -1)]
+
+
+def _bar_height(earned, top):
+    # Empty weeks get no bar at all; tiny amounts still show a sliver.
+    if earned <= 0:
+        return "0%"
+    return f"{max(earned / top * 100, Decimal(1)):.2f}%"
+
+
+def weekly_chart(interviews, weeks):
+    """Earnings per pay week plus y-axis ticks; ``interviews`` must already be priced.
+
+    Returns None when nothing was earned in those weeks.
+    """
+    totals = {week.start: Totals() for week in weeks}
+    for interview in interviews:
+        week_totals = totals.get(week_start(interview.date))
+        if week_totals is not None:
+            week_totals.add(interview)
+
+    peak = max(week_totals.earned for week_totals in totals.values())
+    if peak <= 0:
+        return None
+
+    step = _nice_step(peak / 4)
+    top = step * (peak / step).to_integral_value(rounding=ROUND_CEILING)
+    ticks = []
+    value = ZERO
+    while value <= top:
+        ticks.append({"value": value, "bottom": f"{value / top * 100:.2f}%"})
+        value += step
+    bars = [
+        ChartBar(
+            period=week,
+            totals=totals[week.start],
+            height=_bar_height(totals[week.start].earned, top),
+            is_current=week.is_current,
+        )
+        for week in weeks
+    ]
+    return {"bars": bars, "ticks": ticks}
 
 
 def set_hourly_rate(member, rate, effective_from, set_by):

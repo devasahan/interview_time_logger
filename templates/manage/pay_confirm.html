@@ -2,42 +2,46 @@
 {% load tracker_tags %}
 {% block title %}Confirm payment{% endblock %}
 {% block content %}
-<div class="page-header">
+<div class="page-head">
   <div>
-    <p class="eyebrow"><a href="{{ week_url }}">← Pay week {{ period.label }}</a></p>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'tracker:manage_payroll' %}">Payroll</a><span>/</span><a href="{{ week_url }}">{{ period.label }}</a><span>/</span><span>Confirm</span></nav>
     <h1>Confirm payment{% if member %} to {{ member.display_name }}{% endif %}</h1>
-    <p class="muted">Check the amounts, send the money, then mark it as paid. Members see it in their payment history right away.</p>
+    <p class="page-sub">Check the amounts, send the money, then mark it as paid. Members see it in their payment history right away.</p>
   </div>
 </div>
 
 {% if skipped %}
-  <div class="alert alert-warning" style="margin-bottom:24px">
-    <p><strong>Not included (no hourly rate yet):</strong>
-      {% for skipped_member, skipped_totals in skipped %}<a href="{% url 'tracker:manage_member' skipped_member.pk %}">{{ skipped_member.display_name }}</a> ({{ skipped_totals.count }} interview{{ skipped_totals.count|pluralize }}){% if not forloop.last %}, {% endif %}{% endfor %}.
-      Set a rate to include this work.</p>
+  <div class="alert alert-warning banner">
+    <span class="alert-icon">{% icon "triangle-alert" 20 %}</span>
+    <div class="alert-body">
+      <p class="alert-title">Not included (no hourly rate yet)</p>
+      <p>{% for skipped_member, skipped_totals in skipped %}<a href="{% url 'tracker:manage_member' skipped_member.pk %}">{{ skipped_member.display_name }}</a> ({{ skipped_totals.count }} interview{{ skipped_totals.count|pluralize }}){% if not forloop.last %}, {% endif %}{% endfor %}. Set a rate to include this work.</p>
+    </div>
   </div>
 {% endif %}
 
 {% for group in groups %}
-  <section class="panel">
-    <div class="panel-header">
-      <h2>{{ group.member.display_name }}</h2>
-      <span class="meta">{{ group.totals.count }} interview{{ group.totals.count|pluralize }} · {{ group.totals.minutes|duration }} · <strong>{{ group.totals.unpaid|money }}</strong></span>
-    </div>
+  <section class="card">
+    <header class="card-head">
+      <div class="person">
+        <span class="avatar t{{ group.member|avatar_tone }}">{{ group.member|initials }}</span>
+        <div><h2>{{ group.member.display_name }}</h2><p class="card-sub">{{ group.totals.count }} interview{{ group.totals.count|pluralize }} · {{ group.totals.minutes|duration }}</p></div>
+      </div>
+      <span class="strong" style="font-size: 16px; color: var(--text)">{{ group.totals.unpaid|money }}</span>
+    </header>
     <div class="table-wrap">
       <table class="table responsive">
-        <thead><tr><th>Date</th><th>Time</th><th class="num">Duration</th><th>Interview with</th><th>Role</th><th>Type</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <thead><tr><th>When</th><th class="num">Duration</th><th>Interview with</th><th>Role</th><th>Type</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
         <tbody>
           {% for interview in group.interviews %}
             <tr>
-              <td data-label="Date" class="nowrap">{{ interview.date|date:"D, M j" }}</td>
-              <td data-label="Time" class="nowrap">{{ interview.start_time|time:"H:i" }}–{{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %} <span class="tag">+1 day</span>{% endif %}</td>
+              <td class="lead" data-label="When"><div class="cell-stack"><span class="strong nowrap">{{ interview.date|date:"D, M j" }}</span><span class="sub nowrap">{{ interview.start_time|time:"H:i" }} – {{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %}<span class="tag">+1 day</span>{% endif %}</span></div></td>
               <td class="num" data-label="Duration">{{ interview.duration_minutes|duration }}</td>
               <td data-label="Interview with">{{ interview.interview_with }}</td>
               <td data-label="Role">{{ interview.role }}</td>
               <td data-label="Type"><span class="chip">{{ interview.interview_type.name }}</span></td>
               <td class="num" data-label="Rate">{{ interview.rate|money }}/h</td>
-              <td class="num" data-label="Amount">{{ interview.amount|money }}</td>
+              <td class="num" data-label="Amount"><span class="strong">{{ interview.amount|money }}</span></td>
             </tr>
           {% endfor %}
         </tbody>
@@ -46,19 +50,19 @@
   </section>
 {% endfor %}
 
-<form method="post" class="panel form-narrow">
+<form method="post" class="card form-narrow">
   {% csrf_token %}
   <div class="total-row">
     <span>Total to pay{% if groups|length > 1 %} ({{ groups|length }} members){% endif %}</span>
-    <span>{{ total|money }}</span>
+    <span class="amount">{{ total|money }}</span>
   </div>
-  <div class="panel-body">
+  <div class="form-section">
     {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
     {% include "includes/field.html" with field=form.note %}
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Mark {{ total|money }} as paid</button>
-      <a class="btn btn-ghost" href="{{ week_url }}">Cancel</a>
-    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">{% icon "circle-check" %} Mark {{ total|money }} as paid</button>
+    <a class="btn btn-ghost" href="{{ week_url }}">Cancel</a>
   </div>
 </form>
 {% endblock %}

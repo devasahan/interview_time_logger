@@ -1,10 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Not allowed{% endblock %}
 {% block content %}
-<section class="panel confirm">
-  <div class="empty">
-    <strong>You don't have access to this page</strong>
-    <a href="{% url 'tracker:home' %}">Go to your dashboard</a>
-  </div>
+<section class="card confirm">
+  {% url 'tracker:home' as home_url %}
+  {% include "includes/empty.html" with empty_icon="lock" empty_title="You don't have access to this page" empty_text="It's only available to admins. Head back to your dashboard." %}
+  <div class="form-actions" style="justify-content: center"><a class="btn btn-primary" href="{{ home_url }}">Go to your dashboard</a></div>
 </section>
 {% endblock %}

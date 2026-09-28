@@ -1,55 +1,83 @@
-{% load static %}<!doctype html>
+{% load static tracker_tags %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %} · {{ site_name }}</title>
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}{% endblock %} · {{ brand_name }}</title>
   <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
-<header class="topbar">
-  <div class="container topbar-inner">
-    <a class="brand" href="{% url 'tracker:home' %}">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5"/></svg>
-      <span>{{ site_name }}</span>
-    </a>
-    {% if user.is_authenticated %}
-      <nav class="nav" aria-label="Main">
-        {% if user.is_staff %}
-          <a href="{% url 'tracker:manage_overview' %}"{% if nav == "overview" %} aria-current="page"{% endif %}>Overview</a>
-          <a href="{% url 'tracker:manage_interviews' %}"{% if nav == "interviews" %} aria-current="page"{% endif %}>Interviews</a>
-          <a href="{% url 'tracker:manage_payroll' %}"{% if nav == "payroll" %} aria-current="page"{% endif %}>Payroll</a>
-          <a href="{% url 'tracker:manage_team' %}"{% if nav == "team" %} aria-current="page"{% endif %}>Team{% if pending_approvals %}<span class="count" title="Waiting for approval">{{ pending_approvals }}</span>{% endif %}</a>
-          <a href="{% url 'tracker:manage_types' %}"{% if nav == "types" %} aria-current="page"{% endif %}>Interview types</a>
-        {% else %}
-          <a href="{% url 'tracker:home' %}"{% if nav == "home" %} aria-current="page"{% endif %}>Dashboard</a>
-          <a href="{% url 'tracker:history' %}"{% if nav == "history" %} aria-current="page"{% endif %}>My interviews</a>
-          <a href="{% url 'tracker:payments' %}"{% if nav == "payments" %} aria-current="page"{% endif %}>Payments</a>
-        {% endif %}
-      </nav>
-      <div class="account">
-        <span class="account-name">{{ user.display_name }}</span>
-        <a href="{% url 'accounts:password_change' %}">Password</a>
-        <form method="post" action="{% url 'accounts:logout' %}">
-          {% csrf_token %}
-          <button type="submit" class="link-button">Log out</button>
-        </form>
-      </div>
-    {% endif %}
-  </div>
-</header>
-
-<main class="container">
-  {% if messages %}
-    <div class="messages">
-      {% for message in messages %}
-        <div class="alert alert-{{ message.level_tag }}" role="status">{{ message }}</div>
-      {% endfor %}
+{% block body %}
+{% if user.is_authenticated %}
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-head">
+      <a class="sidebar-brand" href="{% url 'tracker:home' %}">
+        <span class="brand-mark">{% icon "timer" 18 %}</span>
+        <span class="brand-name">{{ brand_name }}</span>
+      </a>
+      <button type="button" class="sidebar-close" data-nav-close aria-label="Close menu">{% icon "x" 20 %}</button>
     </div>
-  {% endif %}
-  {% block content %}{% endblock %}
+    <nav class="sidebar-nav">
+      {% if user.is_staff %}
+        <p class="nav-section">Admin</p>
+        <a class="nav-item" href="{% url 'tracker:manage_overview' %}"{% if nav == "overview" %} aria-current="page"{% endif %}>{% icon "layout-dashboard" %}<span>Overview</span></a>
+        <a class="nav-item" href="{% url 'tracker:manage_interviews' %}"{% if nav == "interviews" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>Interviews</span></a>
+        <a class="nav-item" href="{% url 'tracker:manage_payroll' %}"{% if nav == "payroll" %} aria-current="page"{% endif %}>{% icon "wallet" %}<span>Payroll</span></a>
+        <a class="nav-item" href="{% url 'tracker:manage_team' %}"{% if nav == "team" %} aria-current="page"{% endif %}>{% icon "users" %}<span>Team</span>{% if pending_approvals %}<span class="nav-count" title="Waiting for approval">{{ pending_approvals }}</span>{% endif %}</a>
+        <a class="nav-item" href="{% url 'tracker:manage_types' %}"{% if nav == "types" %} aria-current="page"{% endif %}>{% icon "tags" %}<span>Interview types</span></a>
+      {% else %}
+        <p class="nav-section">Menu</p>
+        <a class="nav-item" href="{% url 'tracker:home' %}"{% if nav == "home" %} aria-current="page"{% endif %}>{% icon "layout-dashboard" %}<span>Dashboard</span></a>
+        <a class="nav-item" href="{% url 'tracker:history' %}"{% if nav == "history" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>My interviews</span></a>
+        <a class="nav-item" href="{% url 'tracker:payments' %}"{% if nav == "payments" %} aria-current="page"{% endif %}>{% icon "wallet" %}<span>Payments</span></a>
+        {% if user.can_log_interviews %}
+          <p class="nav-section">Quick action</p>
+          <a class="nav-item" href="{% url 'tracker:interview_create' %}"{% if nav == "log" %} aria-current="page"{% endif %}>{% icon "plus" %}<span>Log interview</span></a>
+        {% endif %}
+      {% endif %}
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <span class="avatar t{{ user|avatar_tone }}">{{ user|initials }}</span>
+        <div class="user-meta">
+          <div class="user-name">{{ user.display_name }}</div>
+          <div class="user-role">{% if user.is_staff %}Administrator{% else %}Team member{% endif %}</div>
+        </div>
+      </div>
+      <a class="nav-item" href="{% url 'accounts:password_change' %}"{% if nav == "password" %} aria-current="page"{% endif %}>{% icon "key-round" %}<span>Change password</span></a>
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="nav-item">{% icon "log-out" %}<span>Log out</span></button>
+      </form>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" data-nav-close></div>
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="btn btn-ghost btn-icon" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open menu">{% icon "menu" 20 %}</button>
+      <a class="brand" href="{% url 'tracker:home' %}"><span class="brand-mark">{% icon "timer" 16 %}</span>{{ brand_name }}</a>
+    </header>
+    <main class="content" id="content">
+{% else %}
+<main class="plain-shell">
+  <div class="plain-inner">
+{% endif %}
+      {% include "includes/messages.html" %}
+      {% block content %}{% endblock %}
+{% if user.is_authenticated %}
+    </main>
+  </div>
+</div>
+{% else %}
+  </div>
 </main>
+{% endif %}
+{% endblock %}
+<script src="{% static 'js/app.js' %}" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

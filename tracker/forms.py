@@ -33,7 +33,6 @@ class InterviewForm(forms.ModelForm):
         }
         help_texts = {
             "interview_with": "The company or person you interviewed with.",
-            "end_time": "Ran past midnight? Just enter the end time; it counts as the next day.",
         }
         widgets = {
             "date": DateInput(),
