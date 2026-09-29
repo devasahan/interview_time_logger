@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block body %}
+<div class="auth">
+  <aside class="auth-aside">
+    <div class="auth-logo"><span class="brand-mark">{% icon "timer" 18 %}</span>{{ brand_name }}</div>
+    <div class="auth-pitch">
+      <h1>Track your work. Get paid on schedule.</h1>
+      <p>One place for your work, your rate and your weekly payments, whether you run interviews, write code or send bids.</p>
+      <ul class="auth-points">
+        <li><span class="tick">{% icon "check" 14 %}</span><div><strong>Log your work in seconds</strong><span>Interviews and working hours from a start and end time, or the bids you sent today.</span></div></li>
+        <li><span class="tick">{% icon "check" 14 %}</span><div><strong>See what you've earned</strong><span>What each entry pays as you type it, plus weekly and monthly totals.</span></div></li>
+        <li><span class="tick">{% icon "check" 14 %}</span><div><strong>Paid every week</strong><span>Every payment is recorded, so you always know where you stand.</span></div></li>
+      </ul>
+    </div>
+    <p class="auth-foot">© {% now "Y" %} {{ brand_name }}</p>
+  </aside>
+  <main class="auth-main">
+    <div class="auth-card{% block auth_card_class %}{% endblock %}">
+      <div class="auth-mobile-logo"><span class="brand-mark">{% icon "timer" 18 %}</span>{{ brand_name }}</div>
+      {% include "includes/messages.html" %}
+      {% block auth_content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

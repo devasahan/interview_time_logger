@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+<section class="card confirm">
+  {% url 'tracker:home' as home_url %}
+  {% include "includes/empty.html" with empty_icon="inbox" empty_title="We couldn't find that page" empty_text="The link may be old, or the page was moved." %}
+  <div class="form-actions" style="justify-content: center"><a class="btn btn-primary" href="{{ home_url }}">Go to your dashboard</a></div>
+</section>
+{% endblock %}

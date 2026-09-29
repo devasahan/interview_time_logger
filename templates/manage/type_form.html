@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Edit {{ original_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'tracker:manage_types' %}">Interview types</a><span>/</span><span>{{ original_name }}</span></nav>
+    <h1>Edit “{{ original_name }}”</h1>
+    <p class="page-sub">Used by {{ usage }} interview{{ usage|pluralize }}. Renaming updates them too. Hide a type instead of deleting it so past interviews keep their type.</p>
+  </div>
+</div>
+
+<form method="post" class="card form-narrow">
+  {% csrf_token %}
+  <div class="form-section">
+    {% include "includes/form_errors.html" %}
+    {% include "includes/field.html" with field=form.name %}
+    {% include "includes/field.html" with field=form.is_active %}
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">{% icon "check" %} Save</button>
+    <a class="btn btn-ghost" href="{% url 'tracker:manage_types' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

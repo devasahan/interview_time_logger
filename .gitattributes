@@ -1,0 +1,2 @@
+# Keep shell scripts with Unix line endings so the Docker entrypoint runs everywhere.
+*.sh text eol=lf

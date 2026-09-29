@@ -1,0 +1,40 @@
+{% load tracker_tags %}
+{% comment %}
+  Earned per pay week (single series). Values are on hover/focus of each column,
+  the current week is labelled on its cap, and "View as table" has every number.
+{% endcomment %}
+<figure class="chart" aria-label="{{ chart_title }}">
+  <div class="chart-plot">
+    {% for tick in chart.ticks %}
+      <div class="chart-gridline{% if forloop.first %} base{% endif %}" style="bottom: {{ tick.bottom }}" aria-hidden="true"><span>{{ tick.value|money_short }}</span></div>
+    {% endfor %}
+    <div class="chart-cols">
+      {% for bar in chart.bars %}
+        <div class="chart-col" tabindex="0" aria-label="{{ bar.period.label }}: {{ bar.totals.earned|money }} for {{ bar.totals|work }}">
+          <div class="chart-bar" style="height: {{ bar.height }}">
+            {% if bar.is_current %}<span class="chart-value">{{ bar.totals.earned|money }}</span>{% endif %}
+            <div class="chart-tip" role="tooltip">
+              <strong>{{ bar.totals.earned|money }}</strong>
+              <span>{{ bar.period.label }}</span>
+              <span>{{ bar.totals|work }}</span>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="chart-x" aria-hidden="true">
+    {% for bar in chart.bars %}<span{% if bar.is_current %} class="current"{% endif %}>{% if bar.is_current %}<span class="x-wide">This week</span><span class="x-narrow">{{ bar.period.start|date:"M j" }}</span>{% else %}{{ bar.period.start|date:"M j" }}{% endif %}</span>{% endfor %}
+  </div>
+  <details class="chart-table">
+    <summary>View as table</summary>
+    <table class="table">
+      <thead><tr><th>Pay week</th><th>Work</th><th class="num">Earned</th></tr></thead>
+      <tbody>
+        {% for bar in chart.bars %}
+          <tr><td>{{ bar.period.label }}</td><td>{{ bar.totals|work }}</td><td class="num">{{ bar.totals.earned|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</figure>

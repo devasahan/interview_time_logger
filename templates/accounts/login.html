@@ -1,0 +1,14 @@
+{% extends "accounts/auth_base.html" %}
+{% block title %}Log in{% endblock %}
+{% block auth_content %}
+<h1>Welcome back</h1>
+<p class="lead">Log in to track your work and your pay.</p>
+<form method="post">
+  {% csrf_token %}
+  {% include "includes/form_errors.html" %}
+  {% for field in form %}{% include "includes/field.html" %}{% endfor %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit" class="btn btn-primary btn-block">Log in</button>
+</form>
+<p class="auth-switch">New here? <a href="{% url 'accounts:signup' %}">Create an account</a></p>
+{% endblock %}

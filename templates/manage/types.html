@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Interview types{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Interview types</h1>
+    <p class="page-sub">The choices members pick from when they log an interview.</p>
+  </div>
+</div>
+
+<div class="grid-split">
+  <section class="card">
+    <header class="card-head"><div><h2>All types</h2><p class="card-sub">{{ types|length }} type{{ types|length|pluralize }}</p></div></header>
+    {% if types %}
+      <ul class="feed">
+        {% for interview_type in types %}
+          <li class="feed-item">
+            <span class="feed-icon tone-indigo">{% icon "tags" 16 %}</span>
+            <div class="feed-main">
+              <p class="feed-title">{{ interview_type.name }}</p>
+              <p class="feed-sub">{% if interview_type.usage %}Used in {{ interview_type.usage }} interview{{ interview_type.usage|pluralize }}{% else %}Not used yet{% endif %}</p>
+            </div>
+            <div class="feed-side row">
+              {% if interview_type.is_active %}<span class="badge badge-active">Available</span>{% else %}<span class="badge badge-deactivated">Hidden</span>{% endif %}
+              <a class="btn btn-ghost btn-sm" href="{% url 'tracker:manage_type_edit' interview_type.pk %}" aria-label="Edit {{ interview_type.name }}">{% icon "pencil" 16 %} Edit</a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="tags" empty_title="No interview types yet" %}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <header class="card-head"><div><h2>Add a type</h2><p class="card-sub">For example "Panel interview"</p></div></header>
+    <form method="post">
+      {% csrf_token %}
+      <div class="card-body">
+        {% include "includes/form_errors.html" %}
+        {% include "includes/field.html" with field=form.name %}
+        {% include "includes/field.html" with field=form.is_active %}
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">{% icon "plus" %} Add type</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

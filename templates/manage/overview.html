@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p class="page-sub">{{ today|date:"l, F j, Y" }} · Pay week {{ week.label }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'tracker:manage_payroll_week' week.start %}">{% icon "calendar-clock" %} This week's payroll</a>
+    <a class="btn btn-primary" href="{% url 'tracker:manage_payroll' %}">{% icon "wallet" %} Payroll</a>
+  </div>
+</div>
+
+{% if pending_members %}
+  <div class="alert alert-warning banner">
+    <span class="alert-icon">{% icon "user-plus" 20 %}</span>
+    <div class="alert-body">
+      <p class="alert-title">{{ pending_members|length }} new member{{ pending_members|length|pluralize }} waiting for approval</p>
+      <p>{% for member in pending_members %}<a href="{% url 'tracker:manage_member' member.pk %}">{{ member.display_name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    </div>
+    <a class="btn btn-sm" href="{% url 'tracker:manage_team' %}">Review</a>
+  </div>
+{% endif %}
+
+<section class="kpis" aria-label="Summary">
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Earned this week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-value">{{ week_totals.earned|money }}</div>
+    <div class="kpi-foot">{{ week_totals|work }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
+    <div class="kpi-value">{{ unpaid_totals.unpaid|money }}</div>
+    <div class="kpi-foot">{{ unpaid_weeks|length }} week{{ unpaid_weeks|length|pluralize }} with unpaid work{% if unpaid_totals.unpriced %} · {{ unpaid_totals.unpriced }} without a rate{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Paid in {{ month.start|date:"F" }}</span><span class="kpi-icon tone-green">{% icon "circle-check" %}</span></div>
+    <div class="kpi-value">{{ paid_this_month|money }}</div>
+    <div class="kpi-foot">recorded payments</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Active members</span><span class="kpi-icon tone-sky">{% icon "users" %}</span></div>
+    <div class="kpi-value">{{ rows|length }}</div>
+    <div class="kpi-foot">{% if pending_members %}+ {{ pending_members|length }} waiting for approval{% else %}No pending sign-ups{% endif %}</div>
+  </div>
+</section>
+
+<div class="grid-split">
+  <section class="card">
+    <header class="card-head">
+      <div><h2>Team earnings</h2><p class="card-sub">Per pay week, last 8 weeks</p></div>
+      <a class="more" href="{% url 'tracker:manage_interviews' %}">Interviews {% icon "arrow-right" 16 %}</a>
+    </header>
+    {% if chart %}
+      {% include "includes/chart.html" with chart_title="Team earnings per pay week, last 8 weeks" %}
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Weekly totals appear here as your team logs work." %}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <header class="card-head">
+      <div><h2>Unpaid weeks</h2><p class="card-sub">Oldest first</p></div>
+      <a class="more" href="{% url 'tracker:manage_payroll' %}">Payroll {% icon "arrow-right" 16 %}</a>
+    </header>
+    {% if unpaid_weeks %}
+      <ul class="feed">
+        {% for summary in unpaid_weeks %}
+          <li class="feed-item">
+            <span class="feed-icon tone-amber">{% icon "calendar-clock" 16 %}</span>
+            <div class="feed-main">
+              <p class="feed-title">{{ summary.period.label }}</p>
+              <p class="feed-sub">{% if summary.period.is_current %}This week · {% endif %}{{ summary.member_count }} member{{ summary.member_count|pluralize }} · {{ summary.totals|work_short }}{% if summary.totals.unpriced %} · {{ summary.totals.unpriced }} without rate{% endif %}</p>
+            </div>
+            <div class="feed-side">
+              <span class="strong">{{ summary.totals.unpaid|money }}</span>
+              <a class="btn btn-sm" href="{% url 'tracker:manage_payroll_week' summary.period.start %}">Review &amp; pay</a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="circle-check" empty_title="Everyone is paid up" empty_text="Nothing is waiting to be paid." %}
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <header class="card-head">
+    <div><h2>Team this week</h2><p class="card-sub">Pay week {{ week.label }}</p></div>
+    <a class="more" href="{% url 'tracker:manage_team' %}">Manage team {% icon "arrow-right" 16 %}</a>
+  </header>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead><tr><th>Member</th><th class="num">Rate</th><th class="num">Logged this week</th><th class="num">Earned this week</th><th class="num">Total to be paid</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="lead" data-label="Member">
+                <a class="person" href="{% url 'tracker:manage_member' row.member.pk %}">
+                  <span class="avatar avatar-sm t{{ row.member|avatar_tone }}">{{ row.member|initials }}</span>
+                  <span class="cell-stack"><span class="person-name">{{ row.member.display_name }}</span><span class="sub">{% if row.member.team_role %}{{ row.member.get_team_role_display }}{% else %}{{ row.member.email|default:row.member.username }}{% endif %}</span></span>
+                </a>
+              </td>
+              <td class="num" data-label="Rate">{% if row.rate is not None %}{{ row.rate|money }}/{{ row.member.rate_unit }}{% else %}<span class="badge badge-muted">not set</span>{% endif %}</td>
+              <td class="num" data-label="Logged this week">{{ row.week|work_short }}</td>
+              <td class="num" data-label="Earned this week">{{ row.week.earned|money }}</td>
+              <td class="num" data-label="Total to be paid"><span class="strong">{{ row.unpaid.unpaid|money }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include "includes/empty.html" with empty_icon="users" empty_title="No active members yet" empty_text="Share the sign-up link from the Team page, then approve people there." %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <header class="card-head">
+    <div><h2>Latest logged work</h2><p class="card-sub">Change the status to Paid once you've paid for it</p></div>
+    <a class="more" href="{% url 'tracker:manage_interviews' %}">Work log {% icon "arrow-right" 16 %}</a>
+  </header>
+  {% if recent %}
+    {% include "tracker/_interview_table.html" with interviews=recent show_user=True can_set_paid=True %}
+  {% else %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="Nothing logged yet" empty_text="Interviews, work hours and bids appear here as your team logs them." %}
+  {% endif %}
+</section>
+{% endblock %}

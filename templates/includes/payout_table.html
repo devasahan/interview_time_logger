@@ -1,0 +1,42 @@
+{% load tracker_tags %}
+<div class="table-wrap">
+  <table class="table responsive">
+    <thead>
+      <tr>
+        {% if show_member %}<th>Member</th>{% endif %}
+        <th>Paid on</th>
+        <th>Pay week</th>
+        <th>Work</th>
+        <th class="num">Amount</th>
+        <th>Note</th>
+        {% if show_undo %}<th><span class="sr-only">Actions</span></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for payout in payouts %}
+        <tr>
+          {% if show_member %}
+            <td class="lead" data-label="Member">
+              <a class="person" href="{% url 'tracker:manage_member' payout.user_id %}">
+                <span class="avatar avatar-sm t{{ payout.user|avatar_tone }}">{{ payout.user|initials }}</span>
+                <span class="person-name">{{ payout.user.display_name }}</span>
+              </a>
+            </td>
+          {% endif %}
+          <td data-label="Paid on" class="nowrap{% if not show_member %} lead{% endif %}"><span class="strong">{{ payout.paid_at|date:"M j, Y" }}</span></td>
+          <td data-label="Pay week" class="nowrap">
+            {% if show_undo %}<a href="{% url 'tracker:manage_payroll_week' payout.period_start %}">{{ payout.period_label }}</a>{% else %}{{ payout.period_label }}{% endif %}
+          </td>
+          <td data-label="Work">{{ payout|work }}</td>
+          <td class="num" data-label="Amount"><span class="strong">{{ payout.amount|money }}</span></td>
+          <td data-label="Note">{{ payout.note|default:"—" }}</td>
+          {% if show_undo %}
+            <td class="actions">
+              <a class="btn btn-ghost btn-sm danger" href="{% url 'tracker:manage_payout_undo' payout.pk %}?next={{ request.get_full_path|urlencode }}">{% icon "undo-2" 16 %} Undo</a>
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

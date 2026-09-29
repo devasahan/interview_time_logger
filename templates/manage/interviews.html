@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    {% if selected_member %}
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'tracker:manage_interviews' %}">Work log</a><span>/</span><a href="{% url 'tracker:manage_member' selected_member.pk %}">{{ selected_member.display_name }}</a></nav>
+    {% endif %}
+    <h1>{{ heading }}</h1>
+    <p class="page-sub">{% if selected_member %}Everything {{ selected_member.display_name }} logged, by week or month.{% else %}Everything your team logged (interviews, work hours and bids), by week or month.{% endif %}</p>
+  </div>
+</div>
+
+<div class="toolbar">
+  {% include "includes/period_nav.html" %}
+  <form class="toolbar-right filters" method="get">
+    <input type="hidden" name="period" value="{{ period.kind }}">
+    <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
+    <label class="sr-only" for="member-filter">Member</label>
+    <select id="member-filter" name="user" onchange="this.form.submit()">
+      <option value="">All members</option>
+      {% for member in members %}
+        <option value="{{ member.pk }}"{% if selected_member and member.pk == selected_member.pk %} selected{% endif %}>{{ member.display_name }}{% if not member.is_active %} (deactivated){% endif %}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-sm">Show</button></noscript>
+  </form>
+</div>
+
+<section class="kpis" aria-label="Totals for {{ period.label }}">
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Entries</span><span class="kpi-icon tone-indigo">{% icon "calendar-check" %}</span></div>
+    <div class="kpi-value">{{ totals.count }}</div>
+    <div class="kpi-foot">{{ totals|work }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Earned</span><span class="kpi-icon tone-sky">{% icon "coins" %}</span></div>
+    <div class="kpi-value">{{ totals.earned|money }}</div>
+    <div class="kpi-foot">for work in this {{ period.kind }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Paid</span><span class="kpi-icon tone-green">{% icon "circle-check" %}</span></div>
+    <div class="kpi-value">{{ totals.paid|money }}</div>
+    <div class="kpi-foot">already paid out</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
+    <div class="kpi-value">{{ totals.unpaid|money }}</div>
+    <div class="kpi-foot">{% if totals.unpriced %}+ {{ totals.unpriced }} entr{{ totals.unpriced|pluralize:"y,ies" }} waiting for a rate{% else %}not paid yet{% endif %}</div>
+  </div>
+</section>
+
+{% if member_rows %}
+  <section class="card">
+    <header class="card-head"><div><h2>By member</h2><p class="card-sub">Totals for {{ period.label }}</p></div></header>
+    <div class="table-wrap">
+      <table class="table responsive">
+        <thead>
+          <tr><th>Member</th><th>Work</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">To be paid</th></tr>
+        </thead>
+        <tbody>
+          {% for member, member_totals in member_rows %}
+            <tr>
+              <td class="lead" data-label="Member">
+                <a class="person" href="{% querystring user=member.pk %}">
+                  <span class="avatar avatar-sm t{{ member|avatar_tone }}">{{ member|initials }}</span>
+                  <span class="person-name">{{ member.display_name }}</span>
+                </a>
+              </td>
+              <td data-label="Work">{{ member_totals|work }}</td>
+              <td class="num" data-label="Earned">{{ member_totals.earned|money }}</td>
+              <td class="num" data-label="Paid">{{ member_totals.paid|money }}</td>
+              <td class="num" data-label="To be paid"><span class="strong">{{ member_totals.unpaid|money }}</span>{% if member_totals.unpriced %} <span class="badge badge-muted">rate not set</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}
+
+{% if groups %}
+  <section class="card">
+    <header class="card-head"><div><h2>Entries</h2><p class="card-sub">{{ period.label }}, {% if period.kind == "month" %}week by week{% else %}day by day{% endif %}</p></div></header>
+    {% include "tracker/_interview_table.html" with interview_groups=groups %}
+  </section>
+{% else %}
+  <section class="card">
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="Nothing logged in "|add:period.label empty_text="Use the arrows to look at other dates." %}
+  </section>
+{% endif %}
+{% endblock %}

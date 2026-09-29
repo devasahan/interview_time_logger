@@ -1,0 +1,7 @@
+{% load tracker_tags %}
+<div class="empty">
+  <span class="empty-icon">{% icon empty_icon|default:"inbox" 22 %}</span>
+  <p class="empty-title">{{ empty_title }}</p>
+  {% if empty_text %}<p class="empty-text">{{ empty_text }}</p>{% endif %}
+  {% if empty_url %}<a class="btn btn-primary" href="{{ empty_url }}">{% icon "plus" %} {{ empty_action }}</a>{% endif %}
+</div>

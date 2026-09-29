@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Team</h1>
+    <p class="page-sub">Approve new sign-ups by choosing their role and rate (per hour, or per bid for virtual assistants). Open a member to change either later.</p>
+  </div>
+</div>
+
+<section class="card">
+  <header class="card-head plain">
+    <div><h2>Invite your team</h2><p class="card-sub">Share this link. New sign-ups show up below, waiting for your approval.</p></div>
+  </header>
+  <div class="card-body">
+    <div class="copy-field">
+      <label class="sr-only" for="signup-link">Sign-up link</label>
+      <input type="text" id="signup-link" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'accounts:signup' %}">
+      <button type="button" class="btn" data-copy="signup-link">{% icon "external-link" 16 %} <span data-copy-label>Copy link</span></button>
+    </div>
+  </div>
+</section>
+
+{% if waiting %}
+  <section class="card" id="waiting">
+    <header class="card-head">
+      <div><h2>Waiting for approval</h2><p class="card-sub">{{ waiting|length }} new sign-up{{ waiting|length|pluralize }}. Choose a role and a rate, then click Approve.</p></div>
+    </header>
+    <ul class="approvals">
+      {% for member in waiting %}
+        <li class="approval">
+          <a class="person" href="{% url 'tracker:manage_member' member.pk %}">
+            <span class="avatar t{{ member|avatar_tone }}">{{ member|initials }}</span>
+            <span class="cell-stack"><span class="person-name">{{ member.display_name }}</span><span class="sub">{{ member.email|default:member.username }} · signed up {{ member.date_joined|date:"M j" }}</span></span>
+          </a>
+          <form method="post" action="{% url 'tracker:manage_member_approve' member.pk %}" class="approve-form" novalidate>
+            {% csrf_token %}
+            <label class="sr-only" for="role-{{ member.pk }}">Role for {{ member.display_name }}</label>
+            <select id="role-{{ member.pk }}" name="team_role" data-rate-unit-for="rate-{{ member.pk }}">
+              <option value="">Choose a role</option>
+              {% for value, label in role_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+            <label class="sr-only" for="rate-{{ member.pk }}">Rate for {{ member.display_name }}</label>
+            <input type="number" id="rate-{{ member.pk }}" name="rate" min="0" step="0.01" inputmode="decimal" placeholder="Rate">
+            <button type="submit" class="btn btn-primary">{% icon "user-check" 16 %} Approve</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+<section class="card">
+  <header class="card-head"><div><h2>Members</h2><p class="card-sub">{{ rows|length }} account{{ rows|length|pluralize }}</p></div></header>
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead>
+        <tr><th>Member</th><th>Role</th><th>Status</th><th class="num">Rate</th><th class="num">This week</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="lead" data-label="Member">
+              <a class="person" href="{% url 'tracker:manage_member' row.member.pk %}">
+                <span class="avatar t{{ row.member|avatar_tone }}">{{ row.member|initials }}</span>
+                <span class="cell-stack"><span class="person-name">{{ row.member.display_name }}</span><span class="sub" title="{{ row.member.username }}{% if row.member.email %} · {{ row.member.email }}{% endif %}">{{ row.member.username }}{% if row.member.email %} · {{ row.member.email }}{% endif %}</span></span>
+              </a>
+            </td>
+            <td data-label="Role">{% if row.member.team_role %}{{ row.member.get_team_role_display }}{% elif row.member.is_staff %}<span class="muted">—</span>{% else %}<span class="muted">Not set</span>{% endif %}</td>
+            <td data-label="Status">
+              {% if row.member.status == "active" %}<span class="badge badge-active">Active</span>
+              {% elif row.member.status == "admin" %}<span class="badge badge-admin">Admin</span>
+              {% else %}<span class="badge badge-deactivated">Deactivated</span>{% endif %}
+            </td>
+            <td class="num" data-label="Rate">{% if row.rate is not None %}{{ row.rate|money }}/{{ row.member.rate_unit }}{% else %}—{% endif %}</td>
+            <td class="num" data-label="This week">{{ row.week|work_short }}</td>
+            <td class="num" data-label="To be paid">{{ row.unpaid.unpaid|money }}</td>
+            <td class="actions"><a class="btn btn-sm" href="{% url 'tracker:manage_member' row.member.pk %}">Manage</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
