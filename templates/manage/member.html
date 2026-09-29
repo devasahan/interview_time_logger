@@ -42,7 +42,7 @@
     <div class="kpi-foot">{% if rate is None %}set it below{% elif rate_since %}since {{ rate_since|date:"M j, Y" }}{% else %}first rate{% endif %}{% if next_rate %} · {{ next_rate.rate|money }}/{{ member.rate_unit }} from {{ next_rate.effective_from|date:"M j" }}{% endif %}</div>
   </div>
   <div class="kpi">
-    <div class="kpi-top"><span class="kpi-label">This week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-top"><span class="kpi-label">This week</span><span class="kpi-icon tone-indigo">{% if member.logs_bids %}{% icon "send" %}{% else %}{% icon "clock" %}{% endif %}</span></div>
     <div class="kpi-value">{% if member.logs_bids %}{{ week_totals.bids|bid_count }}{% else %}{{ week_totals.minutes|duration }}{% endif %}</div>
     <div class="kpi-foot">{{ week_totals.earned|money }} earned{% if member.logs_bids %} · {{ week_totals.count }} day{{ week_totals.count|pluralize }} logged{% elif week_totals.interview_count %} · {{ week_totals.interview_count }} interview{{ week_totals.interview_count|pluralize }}{% endif %}</div>
   </div>
