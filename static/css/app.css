@@ -234,6 +234,49 @@ a:hover { color: var(--primary-hover); }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
 
+/* Team members get a single page, so a top bar instead of the sidebar */
+.member-app { min-height: 100vh; }
+.appbar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.appbar-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  max-width: 1240px; height: 64px; margin: 0 auto; padding: 0 40px;
+}
+.appbar .brand { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--text); font-weight: 650; }
+.appbar .brand-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appbar-actions { display: flex; align-items: center; gap: 12px; flex: none; }
+.user-menu { position: relative; }
+.user-menu summary {
+  display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 4px;
+  border-radius: 999px; cursor: pointer; list-style: none; color: var(--text); font-weight: 600;
+}
+.user-menu summary::-webkit-details-marker { display: none; }
+.user-menu summary:hover, .user-menu[open] summary { background: var(--surface-hover); }
+.user-menu-caret { color: var(--muted); transition: transform 0.15s; }
+.user-menu[open] .user-menu-caret { transform: rotate(180deg); }
+.user-menu .menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 240px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+}
+.user-menu .menu form { margin: 0; }
+.menu-head { display: flex; flex-direction: column; padding: 10px 12px 12px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+.menu-head span { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 0; border-radius: var(--radius-sm);
+  background: none; color: var(--text-2); font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+}
+.menu-item:hover { background: var(--surface-hover); color: var(--text); }
+.menu-item .icon { color: var(--muted); }
+.card[id] { scroll-margin-top: 84px; }
+@media (max-width: 1439px) { .appbar-inner { padding: 0 32px; } }
+@media (max-width: 1023px) { .appbar-inner { height: 60px; padding: 0 16px; } }
+@media (max-width: 560px) {
+  .appbar .btn-text, .user-menu-name { display: none; }
+  .appbar .btn-primary { width: 40px; padding: 0; }
+}
+
 /* ---------- Page header ---------- */
 .page-head {
   display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap;

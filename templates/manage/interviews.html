@@ -4,33 +4,28 @@
 {% block content %}
 <div class="page-head">
   <div>
-    {% if admin_view and selected_member %}
+    {% if selected_member %}
       <nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'tracker:manage_interviews' %}">Interviews</a><span>/</span><a href="{% url 'tracker:manage_member' selected_member.pk %}">{{ selected_member.display_name }}</a></nav>
     {% endif %}
     <h1>{{ heading }}</h1>
-    <p class="page-sub">{% if admin_view %}{% if selected_member %}Everything {{ selected_member.display_name }} logged, by week or month.{% else %}Everything your team logged, by week or month.{% endif %}{% else %}Everything you've logged, by week or month.{% endif %}</p>
+    <p class="page-sub">{% if selected_member %}Everything {{ selected_member.display_name }} logged, by week or month.{% else %}Everything your team logged, by week or month.{% endif %}</p>
   </div>
-  {% if can_log %}
-    <div class="page-actions"><a class="btn btn-primary" href="{% url 'tracker:interview_create' %}?date={{ anchor|date:'Y-m-d' }}">{% icon "plus" %} Log interview</a></div>
-  {% endif %}
 </div>
 
 <div class="toolbar">
   {% include "includes/period_nav.html" %}
-  {% if admin_view %}
-    <form class="toolbar-right filters" method="get">
-      <input type="hidden" name="period" value="{{ period.kind }}">
-      <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
-      <label class="sr-only" for="member-filter">Member</label>
-      <select id="member-filter" name="user" onchange="this.form.submit()">
-        <option value="">All members</option>
-        {% for member in members %}
-          <option value="{{ member.pk }}"{% if selected_member and member.pk == selected_member.pk %} selected{% endif %}>{{ member.display_name }}{% if not member.is_active %} (deactivated){% endif %}</option>
-        {% endfor %}
-      </select>
-      <noscript><button type="submit" class="btn btn-sm">Show</button></noscript>
-    </form>
-  {% endif %}
+  <form class="toolbar-right filters" method="get">
+    <input type="hidden" name="period" value="{{ period.kind }}">
+    <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
+    <label class="sr-only" for="member-filter">Member</label>
+    <select id="member-filter" name="user" onchange="this.form.submit()">
+      <option value="">All members</option>
+      {% for member in members %}
+        <option value="{{ member.pk }}"{% if selected_member and member.pk == selected_member.pk %} selected{% endif %}>{{ member.display_name }}{% if not member.is_active %} (deactivated){% endif %}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-sm">Show</button></noscript>
+  </form>
 </div>
 
 <section class="kpis" aria-label="Totals for {{ period.label }}">
@@ -93,12 +88,7 @@
   </section>
 {% else %}
   <section class="card">
-    {% if can_log %}
-      {% url 'tracker:interview_create' as create_url %}
-      {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Log one with the button above, or use the arrows to look at other dates." empty_url=create_url empty_action="Log interview" %}
-    {% else %}
-      {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Use the arrows to look at other dates." %}
-    {% endif %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Use the arrows to look at other dates." %}
   </section>
 {% endif %}
 {% endblock %}

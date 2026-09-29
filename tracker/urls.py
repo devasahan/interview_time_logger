@@ -10,11 +10,9 @@ app_name = "tracker"
 urlpatterns = [
     # Team members
     path("", views.home, name="home"),
-    path("interviews/", views.history, name="history"),
     path("interviews/new/", views.interview_create, name="interview_create"),
     path("interviews/<int:pk>/edit/", views.interview_edit, name="interview_edit"),
     path("interviews/<int:pk>/delete/", views.interview_delete, name="interview_delete"),
-    path("payments/", views.payments, name="payments"),
     # Admin
     path("manage/", manage_views.overview, name="manage_overview"),
     path("manage/interviews/", manage_views.interviews, name="manage_interviews"),

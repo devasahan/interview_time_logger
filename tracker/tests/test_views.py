@@ -18,8 +18,6 @@ def last_week():
 class AccessTests(TestCase):
     member_urls = [
         reverse("tracker:home"),
-        reverse("tracker:history"),
-        reverse("tracker:payments"),
         reverse("tracker:interview_create"),
     ]
     admin_urls = [
@@ -112,11 +110,13 @@ class MemberFlowTests(TestCase):
         interview = Interview.objects.get()
         self.assertEqual((interview.user, interview.duration_minutes), (self.user, 90))
         self.assertRedirects(
-            response, f"{reverse('tracker:history')}?period=week&date={self.today.isoformat()}"
+            response, f"{reverse('tracker:home')}?period=week&date={self.today.isoformat()}#interviews"
         )
-        history = self.client.get(response.url)
-        self.assertContains(history, "Globex")
-        self.assertContains(history, "$30.00")
+        home = self.client.get(response.url)
+        self.assertContains(home, "Globex")
+        self.assertContains(home, "$30.00")
+        # Editing from the list comes back to the same spot on the page.
+        self.assertContains(home, "%23interviews")
 
     def test_save_and_log_another_keeps_the_date(self):
         response = self.client.post(reverse("tracker:interview_create"), {**self.form_data(), "add_another": "1"})
@@ -156,18 +156,20 @@ class MemberFlowTests(TestCase):
         interview.refresh_from_db()
         self.assertEqual(interview.duration_minutes, 60)
 
-    def test_history_week_and_month_views(self):
+    def test_home_shows_interviews_by_week_or_month(self):
         make_interview(self.user, day=self.today, start=time(9, 0), end=time(11, 0))
-        week = self.client.get(reverse("tracker:history"))
+        week = self.client.get(reverse("tracker:home"))
+        self.assertContains(week, Period.week_of(self.today).label)
         self.assertContains(week, "$40.00")
-        month = self.client.get(reverse("tracker:history"), {"period": "month"})
+        month = self.client.get(reverse("tracker:home"), {"period": "month"})
         self.assertContains(month, Period.month_of(self.today).label)
         self.assertContains(month, "$40.00")
 
-    def test_dashboard_and_payments_pages(self):
+    def test_home_shows_what_is_still_to_be_paid(self):
         make_interview(self.user, day=self.today)
-        self.assertContains(self.client.get(reverse("tracker:home")), "$20.00")
-        self.assertContains(self.client.get(reverse("tracker:payments")), "Coming up")
+        home = self.client.get(reverse("tracker:home"))
+        self.assertContains(home, "Coming up")
+        self.assertContains(home, "$20.00")
 
 
 class AdminFlowTests(TestCase):
@@ -259,7 +261,7 @@ class AdminFlowTests(TestCase):
 
         # The member sees it in their payment history.
         self.client.force_login(member)
-        self.assertContains(self.client.get(reverse("tracker:payments")), "Wise #123")
+        self.assertContains(self.client.get(reverse("tracker:home")), "Wise #123")
 
         self.client.force_login(self.admin)
         self.client.post(reverse("tracker:manage_payout_undo", args=[payout.pk]))
@@ -285,9 +287,9 @@ class AdminFlowTests(TestCase):
 
         # The member sees it as paid, but can't change it.
         self.client.force_login(member)
-        history = self.client.get(reverse("tracker:history"))
-        self.assertContains(history, "badge-paid")
-        self.assertNotContains(history, status_url)
+        home = self.client.get(reverse("tracker:home"))
+        self.assertContains(home, "badge-paid")
+        self.assertNotContains(home, status_url)
 
         self.client.force_login(self.admin)
         self.client.post(status_url, {"status": "unpaid", "next": interviews_url})

@@ -256,11 +256,10 @@ def interviews(request):
     priced = price_interviews(queryset)
     return render(
         request,
-        "tracker/history.html",
+        "manage/interviews.html",
         {
             "nav": "interviews",
             "heading": selected.display_name if selected else "All interviews",
-            "admin_view": True,
             "members": User.objects.all(),
             "selected_member": selected,
             "member_rows": [] if selected else totals_by_member(priced),

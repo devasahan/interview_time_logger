@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
+    <p class="page-sub">{{ today|date:"l, F j, Y" }}{% if rate is not None %} · Your rate is {{ rate|money }}/h{% endif %}</p>
+  </div>
+</div>
+
+{% if not user.can_log_interviews %}
+  <div class="alert alert-warning banner">
+    <span class="alert-icon">{% icon "hourglass" 20 %}</span>
+    <div class="alert-body">
+      <p class="alert-title">Your account is waiting for approval.</p>
+      <p>An admin needs to approve your account and set your hourly rate. After that you can start logging interviews here.</p>
+    </div>
+  </div>
+{% endif %}
+
+<section class="kpis" aria-label="Summary">
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">This week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-value">{{ week_totals.minutes|duration }}</div>
+    <div class="kpi-foot">{{ week_totals.earned|money }} earned · {{ week_totals.count }} interview{{ week_totals.count|pluralize }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">This month</span><span class="kpi-icon tone-sky">{% icon "coins" %}</span></div>
+    <div class="kpi-value">{{ month_totals.earned|money }}</div>
+    <div class="kpi-foot">{{ month_totals.minutes|duration }} · {{ month_totals.paid|money }} paid</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
+    <div class="kpi-value">{{ unpaid_totals.unpaid|money }}</div>
+    <div class="kpi-foot">{% if unpaid_totals.count %}{{ unpaid_totals.count }} interview{{ unpaid_totals.count|pluralize }} over {{ upcoming|length }} week{{ upcoming|length|pluralize }}{% if unpaid_totals.unpriced %}, {{ unpaid_totals.unpriced }} waiting for a rate{% endif %}{% else %}You're all paid up{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-top"><span class="kpi-label">Paid so far</span><span class="kpi-icon tone-green">{% icon "circle-check" %}</span></div>
+    <div class="kpi-value">{{ paid_total|money }}</div>
+    <div class="kpi-foot">{% if last_payout %}Last payment {{ last_payout.amount|money }} on {{ last_payout.paid_at|date:"M j" }}{% else %}No payments yet{% endif %}</div>
+  </div>
+</section>
+
+<div class="grid-split">
+  <section class="card">
+    <header class="card-head"><div><h2>Your earnings</h2><p class="card-sub">Per pay week, last 8 weeks</p></div></header>
+    {% if chart %}
+      {% include "includes/chart.html" with chart_title="Your earnings per pay week, last 8 weeks" %}
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Your weekly earnings appear here once you log interviews." %}
+    {% endif %}
+  </section>
+
+  <section class="card" id="coming-up">
+    <header class="card-head"><div><h2>Coming up</h2><p class="card-sub">Unpaid work by pay week</p></div></header>
+    {% if upcoming %}
+      <ul class="feed">
+        {% for week in upcoming %}
+          <li class="feed-item">
+            <span class="feed-icon tone-amber">{% icon "calendar-clock" 16 %}</span>
+            <div class="feed-main">
+              <p class="feed-title"><a href="?period=week&amp;date={{ week.period.start|date:'Y-m-d' }}#interviews">{{ week.period.label }}</a></p>
+              <p class="feed-sub">{% if week.period.is_current %}This week · {% endif %}{{ week.totals.count }} interview{{ week.totals.count|pluralize }} · {{ week.totals.minutes|duration }}{% if week.totals.unpriced %} · {{ week.totals.unpriced }} waiting for a rate{% endif %}</p>
+            </div>
+            <div class="feed-side">
+              <span class="strong">{{ week.totals.unpaid|money }}</span>
+              <span class="badge badge-pending">To be paid</span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "includes/empty.html" with empty_icon="circle-check" empty_title="Nothing waiting" empty_text="Everything you've logged has been paid." %}
+    {% endif %}
+  </section>
+</div>
+
+<section class="card" id="interviews">
+  <header class="card-head">
+    <div>
+      <h2>Interviews</h2>
+      <p class="card-sub">{{ totals.count }} interview{{ totals.count|pluralize }} · {{ totals.minutes|duration }} · {{ totals.earned|money }} earned{% if totals.unpaid %} · {{ totals.unpaid|money }} to be paid{% endif %}</p>
+    </div>
+    {% include "includes/period_nav.html" with fragment="#interviews" %}
+  </header>
+  {% if groups %}
+    {% include "tracker/_interview_table.html" with interview_groups=groups return_fragment="#interviews" %}
+  {% elif user.can_log_interviews %}
+    {% url 'tracker:interview_create' as create_url %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Log one with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log interview" %}
+  {% else %}
+    {% include "includes/empty.html" with empty_icon="hourglass" empty_title="No interviews yet" empty_text="You can start logging once your account is approved." %}
+  {% endif %}
+</section>
+
+<section class="card" id="payments">
+  <header class="card-head"><div><h2>Payment history</h2><p class="card-sub">Every payment recorded by your admin</p></div></header>
+  {% if payouts %}
+    {% include "includes/payout_table.html" with payouts=payouts %}
+    {% include "includes/pagination.html" with page_obj=payouts fragment="#payments" %}
+  {% else %}
+    {% include "includes/empty.html" with empty_icon="receipt" empty_title="No payments yet" empty_text="Payments appear here when your admin marks your work as paid." %}
+  {% endif %}
+</section>
+{% endblock %}

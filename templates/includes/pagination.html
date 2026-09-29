@@ -3,8 +3,8 @@
   <nav class="pagination" aria-label="Pages">
     <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
     <span class="inline-actions">
-      {% if page_obj.has_previous %}<a class="btn btn-sm" href="{% querystring page=page_obj.previous_page_number %}">{% icon "chevron-left" 16 %} Newer</a>{% endif %}
-      {% if page_obj.has_next %}<a class="btn btn-sm" href="{% querystring page=page_obj.next_page_number %}">Older {% icon "chevron-right" 16 %}</a>{% endif %}
+      {% if page_obj.has_previous %}<a class="btn btn-sm" href="{% querystring page=page_obj.previous_page_number %}{{ fragment }}">{% icon "chevron-left" 16 %} Newer</a>{% endif %}
+      {% if page_obj.has_next %}<a class="btn btn-sm" href="{% querystring page=page_obj.next_page_number %}{{ fragment }}">Older {% icon "chevron-right" 16 %}</a>{% endif %}
     </span>
   </nav>
 {% endif %}

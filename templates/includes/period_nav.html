@@ -1,15 +1,15 @@
 {% load tracker_tags %}
 <div class="toolbar-left">
   <div class="segmented" role="group" aria-label="Show by">
-    <a class="{% if period.kind == 'week' %}active{% endif %}" href="{% querystring period='week' date=anchor %}"{% if period.kind == 'week' %} aria-current="true"{% endif %}>Week</a>
-    <a class="{% if period.kind == 'month' %}active{% endif %}" href="{% querystring period='month' date=anchor %}"{% if period.kind == 'month' %} aria-current="true"{% endif %}>Month</a>
+    <a class="{% if period.kind == 'week' %}active{% endif %}" href="{% querystring period='week' date=anchor %}{{ fragment }}"{% if period.kind == 'week' %} aria-current="true"{% endif %}>Week</a>
+    <a class="{% if period.kind == 'month' %}active{% endif %}" href="{% querystring period='month' date=anchor %}{{ fragment }}"{% if period.kind == 'month' %} aria-current="true"{% endif %}>Month</a>
   </div>
   <div class="period-nav">
-    <a href="{% querystring period=period.kind date=period.previous.start %}" aria-label="Previous {{ period.kind }}">{% icon "chevron-left" %}</a>
+    <a href="{% querystring period=period.kind date=period.previous.start %}{{ fragment }}" aria-label="Previous {{ period.kind }}">{% icon "chevron-left" %}</a>
     <span class="period-label">{{ period.label }}</span>
-    <a href="{% querystring period=period.kind date=period.next.start %}" aria-label="Next {{ period.kind }}">{% icon "chevron-right" %}</a>
+    <a href="{% querystring period=period.kind date=period.next.start %}{{ fragment }}" aria-label="Next {{ period.kind }}">{% icon "chevron-right" %}</a>
   </div>
   {% if not period.is_current %}
-    <a class="btn btn-ghost btn-sm" href="{% querystring period=period.kind date=None %}">{% if period.kind == 'month' %}This month{% else %}This week{% endif %}</a>
+    <a class="btn btn-ghost btn-sm" href="{% querystring period=period.kind date=None %}{{ fragment }}">{% if period.kind == 'month' %}This month{% else %}This week{% endif %}</a>
   {% endif %}
 </div>

@@ -5,8 +5,7 @@ A small web app where team members log the interviews they take part in, and the
 **Members can:**
 - Sign up, then wait for the admin to approve them and set their hourly rate.
 - Log each interview: date, start and end time, who the interview was with, the role, and the interview type (HR, Technical, Culture Call, …).
-- See their history by week or by month, with hours, earnings, what's been paid and what's still to be paid.
-- See every payment they've received and what's coming up next.
+- See everything on one page: this week's and this month's totals, an earnings chart, their interviews by week or by month, what's still to be paid, and every payment they've received.
 
 **The admin can:**
 - Approve new sign-ups in one step on the **Team** page by entering their hourly rate, and change rates later. Only the admin can do this.
@@ -43,9 +42,9 @@ Open http://127.0.0.1:8000 and log in with the admin account.
 
 1. Open a private browser window, go to http://127.0.0.1:8000/accounts/signup/ and create a member account. It says "waiting for approval".
 2. In your admin window go to **Team**, type an hourly rate next to the new member and click **Approve**.
-3. As the member, click **+ Log interview** and add a few interviews. Look at **My interviews** (week and month tabs) and **Payments**.
+3. As the member, click **+ Log interview** and add a few interviews. They show up on the member's home page, where **Week** and **Month** switch the interview list.
 4. As the admin, change an interview's status to **Paid** in **Interviews** (or open **Payroll**, pick the week, click **Pay …** and **Mark as paid** to pay a whole week).
-5. As the member, **Payments** now shows the payment, and those interviews show as **Paid**.
+5. As the member, the home page now shows the payment under **Payment history**, and those interviews show as **Paid**.
 
 Run the tests with `python manage.py test`.
 
@@ -127,7 +126,7 @@ accounts/    user model, sign-up, login (username or email), ensure_admin comman
 tracker/     interviews, hourly rates, payouts, all pages
   periods.py   pay weeks and months
   services.py  pay calculations, summaries, recording and undoing payouts
-  views.py     member pages          manage_views.py  admin pages
+  views.py     member home page      manage_views.py  admin pages
 templates/   HTML templates
-static/      CSS, favicon, small JS for the live duration preview
+static/      CSS, fonts, favicon, small JS (menus, duration preview, table layout)
 ```

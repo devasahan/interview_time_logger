@@ -55,7 +55,7 @@
   {% if show_actions %}
     <td class="actions">
       {% if not interview.is_paid %}
-        <a class="btn btn-ghost btn-sm btn-icon" href="{% url 'tracker:interview_edit' interview.pk %}?next={{ request.get_full_path|urlencode }}" title="Edit" aria-label="Edit the interview with {{ interview.interview_with }} on {{ interview.date|date:'M j' }}">{% icon "pencil" 16 %}<span class="stacked-only">Edit</span></a>
+        <a class="btn btn-ghost btn-sm btn-icon" href="{% url 'tracker:interview_edit' interview.pk %}?next={{ request.get_full_path|urlencode }}{% if return_fragment %}{{ return_fragment|urlencode }}{% endif %}" title="Edit" aria-label="Edit the interview with {{ interview.interview_with }} on {{ interview.date|date:'M j' }}">{% icon "pencil" 16 %}<span class="stacked-only">Edit</span></a>
       {% endif %}
     </td>
   {% endif %}

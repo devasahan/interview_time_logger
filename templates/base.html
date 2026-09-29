@@ -11,7 +11,7 @@
 </head>
 <body>
 {% block body %}
-{% if user.is_authenticated %}
+{% if user.is_authenticated and user.is_staff %}
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <div class="sidebar-head">
@@ -22,30 +22,19 @@
       <button type="button" class="sidebar-close" data-nav-close aria-label="Close menu">{% icon "x" 20 %}</button>
     </div>
     <nav class="sidebar-nav">
-      {% if user.is_staff %}
-        <p class="nav-section">Admin</p>
-        <a class="nav-item" href="{% url 'tracker:manage_overview' %}"{% if nav == "overview" %} aria-current="page"{% endif %}>{% icon "layout-dashboard" %}<span>Overview</span></a>
-        <a class="nav-item" href="{% url 'tracker:manage_interviews' %}"{% if nav == "interviews" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>Interviews</span></a>
-        <a class="nav-item" href="{% url 'tracker:manage_payroll' %}"{% if nav == "payroll" %} aria-current="page"{% endif %}>{% icon "wallet" %}<span>Payroll</span></a>
-        <a class="nav-item" href="{% url 'tracker:manage_team' %}"{% if nav == "team" %} aria-current="page"{% endif %}>{% icon "users" %}<span>Team</span>{% if pending_approvals %}<span class="nav-count" title="Waiting for approval">{{ pending_approvals }}</span>{% endif %}</a>
-        <a class="nav-item" href="{% url 'tracker:manage_types' %}"{% if nav == "types" %} aria-current="page"{% endif %}>{% icon "tags" %}<span>Interview types</span></a>
-      {% else %}
-        <p class="nav-section">Menu</p>
-        <a class="nav-item" href="{% url 'tracker:home' %}"{% if nav == "home" %} aria-current="page"{% endif %}>{% icon "layout-dashboard" %}<span>Dashboard</span></a>
-        <a class="nav-item" href="{% url 'tracker:history' %}"{% if nav == "history" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>My interviews</span></a>
-        <a class="nav-item" href="{% url 'tracker:payments' %}"{% if nav == "payments" %} aria-current="page"{% endif %}>{% icon "wallet" %}<span>Payments</span></a>
-        {% if user.can_log_interviews %}
-          <p class="nav-section">Quick action</p>
-          <a class="nav-item" href="{% url 'tracker:interview_create' %}"{% if nav == "log" %} aria-current="page"{% endif %}>{% icon "plus" %}<span>Log interview</span></a>
-        {% endif %}
-      {% endif %}
+      <p class="nav-section">Admin</p>
+      <a class="nav-item" href="{% url 'tracker:manage_overview' %}"{% if nav == "overview" %} aria-current="page"{% endif %}>{% icon "layout-dashboard" %}<span>Overview</span></a>
+      <a class="nav-item" href="{% url 'tracker:manage_interviews' %}"{% if nav == "interviews" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>Interviews</span></a>
+      <a class="nav-item" href="{% url 'tracker:manage_payroll' %}"{% if nav == "payroll" %} aria-current="page"{% endif %}>{% icon "wallet" %}<span>Payroll</span></a>
+      <a class="nav-item" href="{% url 'tracker:manage_team' %}"{% if nav == "team" %} aria-current="page"{% endif %}>{% icon "users" %}<span>Team</span>{% if pending_approvals %}<span class="nav-count" title="Waiting for approval">{{ pending_approvals }}</span>{% endif %}</a>
+      <a class="nav-item" href="{% url 'tracker:manage_types' %}"{% if nav == "types" %} aria-current="page"{% endif %}>{% icon "tags" %}<span>Interview types</span></a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-card">
         <span class="avatar t{{ user|avatar_tone }}">{{ user|initials }}</span>
         <div class="user-meta">
           <div class="user-name">{{ user.display_name }}</div>
-          <div class="user-role">{% if user.is_staff %}Administrator{% else %}Team member{% endif %}</div>
+          <div class="user-role">Administrator</div>
         </div>
       </div>
       <a class="nav-item" href="{% url 'accounts:password_change' %}"{% if nav == "password" %} aria-current="page"{% endif %}>{% icon "key-round" %}<span>Change password</span></a>
@@ -62,15 +51,46 @@
       <a class="brand" href="{% url 'tracker:home' %}"><span class="brand-mark">{% icon "timer" 16 %}</span>{{ brand_name }}</a>
     </header>
     <main class="content" id="content">
+{% elif user.is_authenticated %}
+<div class="member-app">
+  <header class="appbar">
+    <div class="appbar-inner">
+      <a class="brand" href="{% url 'tracker:home' %}"><span class="brand-mark">{% icon "timer" 16 %}</span><span class="brand-name">{{ brand_name }}</span></a>
+      <div class="appbar-actions">
+        {% if user.can_log_interviews and nav != "log" %}
+          <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}" aria-label="Log interview">{% icon "plus" %}<span class="btn-text">Log interview</span></a>
+        {% endif %}
+        <details class="user-menu" data-menu>
+          <summary aria-label="Account menu for {{ user.display_name }}">
+            <span class="avatar avatar-sm t{{ user|avatar_tone }}">{{ user|initials }}</span>
+            <span class="user-menu-name">{{ user.display_name }}</span>
+            {% icon "chevron-down" 16 "user-menu-caret" %}
+          </summary>
+          <div class="menu">
+            <div class="menu-head"><strong>{{ user.display_name }}</strong><span>{{ user.email|default:user.username }}</span></div>
+            <a class="menu-item" href="{% url 'accounts:password_change' %}">{% icon "key-round" 16 %}Change password</a>
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="menu-item">{% icon "log-out" 16 %}Log out</button>
+            </form>
+          </div>
+        </details>
+      </div>
+    </div>
+  </header>
+  <main class="content" id="content">
 {% else %}
 <main class="plain-shell">
   <div class="plain-inner">
 {% endif %}
       {% include "includes/messages.html" %}
       {% block content %}{% endblock %}
-{% if user.is_authenticated %}
+{% if user.is_authenticated and user.is_staff %}
     </main>
   </div>
+</div>
+{% elif user.is_authenticated %}
+  </main>
 </div>
 {% else %}
   </div>

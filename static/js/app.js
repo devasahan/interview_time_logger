@@ -1,4 +1,4 @@
-// Mobile navigation drawer, copy buttons, dismissible messages and table fitting.
+// Navigation drawer, account menu, copy buttons, dismissible messages and table fitting.
 (function () {
   var app = document.querySelector(".app");
   var toggle = document.querySelector("[data-nav-toggle]");
@@ -17,8 +17,21 @@
   document.querySelectorAll("[data-nav-close]").forEach(function (el) {
     el.addEventListener("click", function () { setOpen(false); });
   });
+  // The account menu is a <details> element: close it on outside clicks and Escape.
+  var menus = document.querySelectorAll("[data-menu]");
+  function closeMenus(except) {
+    menus.forEach(function (menu) {
+      if (menu !== except) menu.open = false;
+    });
+  }
+  document.addEventListener("click", function (event) {
+    closeMenus(event.target.closest ? event.target.closest("[data-menu]") : null);
+  });
+
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") setOpen(false);
+    if (event.key !== "Escape") return;
+    setOpen(false);
+    closeMenus(null);
   });
 
   document.querySelectorAll("[data-copy]").forEach(function (button) {

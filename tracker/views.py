@@ -1,4 +1,4 @@
-"""Pages for team members: dashboard, logging interviews, history and payments."""
+"""Pages for team members: the home page (summary, interviews, payments) and logging interviews."""
 
 from urllib.parse import urlencode
 
@@ -33,8 +33,10 @@ def healthz(request):
     return HttpResponse("ok", content_type="text/plain")
 
 
-def history_url(day, kind=WEEK):
-    return f"{reverse('tracker:history')}?{urlencode({'period': kind, 'date': day.isoformat()})}"
+def home_url(day=None, kind=WEEK):
+    """The home page, scrolled to the interviews of the week (or month) around ``day``."""
+    query = f"?{urlencode({'period': kind, 'date': day.isoformat()})}" if day else ""
+    return f"{reverse('tracker:home')}{query}#interviews"
 
 
 def safe_next(request, fallback):
@@ -48,7 +50,7 @@ def safe_next(request, fallback):
 
 
 def period_context(period):
-    """Template context shared by the week/month history pages."""
+    """Template context for pages that switch between weeks and months."""
     today = timezone.localdate()
     return {
         "period": period,
@@ -59,25 +61,30 @@ def period_context(period):
 
 @login_required
 def home(request):
+    """Everything a member needs on one page: totals, earnings, interviews and payments."""
     if request.user.is_staff:
         return redirect("tracker:manage_overview")
 
     user = request.user
     today = timezone.localdate()
     week, month = Period.week_of(today), Period.month_of(today)
+    period = Period.from_query(request.GET)
     rate_book = RateBook([user.pk])
 
     weeks = chart_weeks(today)
-    recent_range = (min(week.start, month.start, weeks[0].start), max(week.end, month.end))
-    in_range = price_interviews(user.interviews.filter(date__range=recent_range), rate_book)
+    summary_range = (min(week.start, month.start, weeks[0].start), max(week.end, month.end))
+    in_range = price_interviews(user.interviews.filter(date__range=summary_range), rate_book)
     unpaid = price_interviews(user.interviews.filter(payout__isnull=True), rate_book)
-    recent = price_interviews(
-        user.interviews.select_related("interview_type", "payout")[:5], rate_book
+    shown = price_interviews(
+        user.interviews.filter(date__range=(period.start, period.end)).select_related(
+            "interview_type", "payout"
+        ),
+        rate_book,
     )
 
     return render(
         request,
-        "tracker/dashboard.html",
+        "tracker/home.html",
         {
             "nav": "home",
             "today": today,
@@ -85,52 +92,15 @@ def home(request):
             "week_totals": Totals.of(i for i in in_range if week.contains(i.date)),
             "month_totals": Totals.of(i for i in in_range if month.contains(i.date)),
             "unpaid_totals": Totals.of(unpaid),
-            "unpaid_weeks": len(summarize_weeks(unpaid)),
-            "last_payout": user.payouts.first(),
-            "recent": recent,
-            "chart": weekly_chart(in_range, weeks),
-        },
-    )
-
-
-@login_required
-def history(request):
-    period = Period.from_query(request.GET)
-    interviews = price_interviews(
-        request.user.interviews.filter(date__range=(period.start, period.end)).select_related(
-            "interview_type", "payout"
-        )
-    )
-    return render(
-        request,
-        "tracker/history.html",
-        {
-            "nav": "history",
-            "heading": "My interviews",
-            "totals": Totals.of(interviews),
-            "groups": group_for_display(period, interviews),
-            "show_actions": True,
-            "can_log": request.user.can_log_interviews,
-            **period_context(period),
-        },
-    )
-
-
-@login_required
-def payments(request):
-    user = request.user
-    unpaid = price_interviews(user.interviews.filter(payout__isnull=True))
-    payouts = Paginator(user.payouts.all(), 20).get_page(request.GET.get("page"))
-    return render(
-        request,
-        "tracker/payments.html",
-        {
-            "nav": "payments",
-            "unpaid_totals": Totals.of(unpaid),
             "upcoming": summarize_weeks(unpaid),
             "paid_total": user.payouts.aggregate(total=Sum("amount"))["total"] or ZERO,
             "last_payout": user.payouts.first(),
-            "payouts": payouts,
+            "chart": weekly_chart(in_range, weeks),
+            "totals": Totals.of(shown),
+            "groups": group_for_display(period, shown),
+            "show_actions": True,
+            "payouts": Paginator(user.payouts.all(), 10).get_page(request.GET.get("page")),
+            **period_context(period),
         },
     )
 
@@ -151,7 +121,7 @@ def interview_create(request):
             )
             if "add_another" in request.POST:
                 return redirect(f"{reverse('tracker:interview_create')}?date={interview.date.isoformat()}")
-            return redirect(history_url(interview.date))
+            return redirect(home_url(interview.date))
     else:
         form = InterviewForm(
             owner=request.user,
@@ -160,7 +130,7 @@ def interview_create(request):
     return render(
         request,
         "tracker/interview_form.html",
-        {"nav": "log", "form": form, "cancel_url": reverse("tracker:history")},
+        {"nav": "log", "form": form, "cancel_url": home_url()},
     )
 
 
@@ -174,7 +144,7 @@ def _editable_interview(request, pk):
 
 def _back_url(request, interview):
     if interview.user_id == request.user.pk:
-        fallback = history_url(interview.date)
+        fallback = home_url(interview.date)
     else:
         query = urlencode({"user": interview.user_id, "date": interview.date.isoformat()})
         fallback = f"{reverse('tracker:manage_interviews')}?{query}"
@@ -213,7 +183,7 @@ def interview_edit(request, pk):
         request,
         "tracker/interview_form.html",
         {
-            "nav": "interviews" if request.user.is_staff else "history",
+            "nav": "interviews" if request.user.is_staff else "home",
             "form": form,
             "interview": interview,
             "next": back,
@@ -242,7 +212,7 @@ def interview_delete(request, pk):
         request,
         "tracker/confirm.html",
         {
-            "nav": "interviews" if request.user.is_staff else "history",
+            "nav": "interviews" if request.user.is_staff else "home",
             "title": "Delete this interview?",
             "message": "This can't be undone.",
             "details": [
