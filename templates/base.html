@@ -17,7 +17,7 @@
     <div class="sidebar-head">
       <a class="sidebar-brand" href="{% url 'tracker:home' %}">
         <span class="brand-mark">{% icon "timer" 18 %}</span>
-        <span class="brand-name">{{ brand_name }}</span>
+        <span class="brand-name">{{ brand_name }}<small>{{ brand_tagline }}</small></span>
       </a>
       <button type="button" class="sidebar-close" data-nav-close aria-label="Close menu">{% icon "x" 20 %}</button>
     </div>

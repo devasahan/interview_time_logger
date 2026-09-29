@@ -1,9 +1,9 @@
-# Interview Time Logger
+# AsahanTechPartners — work & payment tracker
 
-A small web app where team members log the interviews they take part in, and the admin pays them weekly at each member's own hourly rate.
+A web app where AsahanTechPartners team members (interviewers, developers and virtual assistants) log their work, and the admin pays them weekly at each member's own hourly rate.
 
 **Members can:**
-- Sign up, then wait for the admin to approve them and set their hourly rate.
+- Sign up, then wait for the admin to approve them and set their role and hourly rate.
 - Log each interview: date, start and end time, who the interview was with, the role, and the interview type (HR, Technical, Culture Call, …).
 - See everything on one page: this week's and this month's totals, an earnings chart, their interviews by week or by month, what's still to be paid, and every payment they've received.
 

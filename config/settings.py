@@ -1,5 +1,5 @@
 """
-Django settings for Interview Time Logger.
+Django settings for the AsahanTechPartners work and payment tracker.
 
 Every deployment-specific value is read from environment variables. For local
 development, copy ``.env.example`` to ``.env`` and adjust it.
@@ -147,6 +147,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # App settings
+# Shown in the header, page titles and sign-in pages.
+BRAND_NAME = "AsahanTechPartners"
+BRAND_TAGLINE = "Work & payments"
 CURRENCY_SYMBOL = os.environ.get("CURRENCY_SYMBOL", "$")
 
 # First day of the pay week: 0 = Monday ... 6 = Sunday. Pick it before the
