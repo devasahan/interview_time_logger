@@ -111,6 +111,8 @@ class MemberFlowTests(TestCase):
         self.client.force_login(pending)
         response = self.client.get(reverse("tracker:home"))
         self.assertContains(response, "waiting for approval")
+        self.assertContains(response, "Admin approval")
+        self.assertNotContains(response, "Log interview")
         self.assertRedirects(self.client.get(reverse("tracker:interview_create")), reverse("tracker:home"))
         self.client.post(reverse("tracker:interview_create"), self.form_data())
         self.assertFalse(Interview.objects.exists())
@@ -178,7 +180,7 @@ class MemberFlowTests(TestCase):
     def test_home_shows_what_is_still_to_be_paid(self):
         make_interview(self.user, day=self.today)
         home = self.client.get(reverse("tracker:home"))
-        self.assertContains(home, "Coming up")
+        self.assertContains(home, "Upcoming payments")
         self.assertContains(home, "$20.00")
 
     def test_home_shows_the_members_role(self):
@@ -462,8 +464,26 @@ class VirtualAssistantFlowTests(TestCase):
     def test_home_is_about_bids(self):
         home = self.client.get(reverse("tracker:home"))
         self.assertContains(home, "Log bids")
-        self.assertContains(home, "Your rate is $0.08/bid")
+        self.assertContains(home, "$0.08 per bid")
         self.assertNotContains(home, "Log interview")
+
+    def test_today_card_logs_or_edits_todays_bids(self):
+        home = self.client.get(reverse("tracker:home"))
+        self.assertContains(home, "Log today's bids")
+        entry = make_bids(self.va, day=self.today, bids=40)
+        home = self.client.get(reverse("tracker:home"))
+        self.assertContains(home, "Edit today's bids")
+        self.assertContains(home, reverse("tracker:bid_edit", args=[entry.pk]))
+        self.assertContains(home, "$3.20")
+
+    def test_the_bid_form_shows_what_the_bids_pay(self):
+        page = self.client.get(reverse("tracker:bid_create"))
+        self.assertContains(page, "$0.08 per bid")
+        # The rate history goes to the page, so the preview uses the rate of the picked date.
+        self.assertContains(page, '<script id="pay-rates" type="application/json">')
+        self.assertContains(page, '"0.08"')
+        entry = make_bids(self.va, day=self.today, bids=40)
+        self.assertContains(self.client.get(reverse("tracker:bid_edit", args=[entry.pk])), "$3.20")
 
     def test_log_the_days_bids(self):
         response = self.client.post(
@@ -532,6 +552,7 @@ class DeveloperFlowTests(TestCase):
         page = self.client.get(reverse("tracker:interview_create"))
         self.assertContains(page, "Log work")
         self.assertContains(page, "Project")
+        self.assertContains(page, "$40.00 per hour")
         self.assertNotContains(page, "Interview type")
         data = {
             "date": self.today.isoformat(),

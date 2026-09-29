@@ -1,24 +1,66 @@
 {% extends "base.html" %}
 {% load tracker_tags %}
 {% block title %}Home{% endblock %}
-{% block content %}
-<div class="page-head">
-  <div>
-    <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
-    <p class="page-sub">{{ today|date:"l, F j, Y" }}{% if user.team_role %} · {{ user.get_team_role_display }}{% endif %}{% if rate is not None %} · Your rate is {{ rate|money }}/{{ user.rate_unit }}{% endif %}</p>
+
+{% block page_head %}
+{% with kind=user.work_kind %}
+<div class="hero" id="overview">
+  <div class="hero-main">
+    <p class="hero-date">{{ today|date:"l, F j, Y" }}</p>
+    {% if user.can_log_interviews %}
+      <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
+      <ul class="hero-meta" aria-label="Your account">
+        {% if user.team_role %}<li>{% icon "briefcase-business" 15 %}{{ user.get_team_role_display }}</li>{% endif %}
+        {% if rate is not None %}<li>{% icon "coins" 15 %}<span><span class="sr-only">Your rate: </span>{{ rate|money }} per {% if user.logs_bids %}bid{% else %}hour{% endif %}</span></li>{% endif %}
+        <li>{% icon "calendar-clock" 15 %}Paid weekly</li>
+      </ul>
+    {% else %}
+      <h1>Welcome, {{ user.first_name|default:user.username }}</h1>
+      <p class="hero-sub">Thanks for joining {{ brand_name }}.</p>
+    {% endif %}
   </div>
+
+  {% if user.can_log_interviews %}
+    <section class="today{% if today_totals.count %} is-done{% endif %}" aria-labelledby="today-title">
+      <h2 class="today-label" id="today-title">Today</h2>
+      {% if kind == "bids" %}
+        {% if today_bids %}
+          <p class="today-value">{{ today_bids.bids|bid_count }}{% if today_bids.amount is not None %}<span class="amount">{{ today_bids.amount|money }}</span>{% endif %}</p>
+          {% if today_bids.notes %}<p class="today-sub">{{ today_bids.notes|truncatechars:60 }}</p>{% endif %}
+          {% if not today_bids.is_paid %}<a class="btn btn-glass btn-sm" href="{% url 'tracker:bid_edit' today_bids.pk %}">{% icon "pencil" 16 %} Edit today's bids</a>{% endif %}
+        {% else %}
+          <p class="today-value quiet">No bids logged yet</p>
+          <a class="btn btn-light btn-sm" href="{% url 'tracker:bid_create' %}">{% icon "plus" 16 %} Log today's bids</a>
+        {% endif %}
+      {% elif today_totals.count %}
+        <p class="today-value">{{ today_totals.minutes|duration }}<span class="amount">{{ today_totals.earned|money }}</span></p>
+        <p class="today-sub">{% if kind == "work" %}{{ today_totals.count }} entr{{ today_totals.count|pluralize:"y,ies" }} logged{% else %}{{ today_totals.interview_count }} interview{{ today_totals.interview_count|pluralize }}{% endif %}</p>
+        <a class="btn btn-glass btn-sm" href="{% url 'tracker:interview_create' %}">{% icon "plus" 16 %} {% if kind == "work" %}Log more work{% else %}Log another interview{% endif %}</a>
+      {% else %}
+        <p class="today-value quiet">Nothing logged yet</p>
+        <a class="btn btn-light btn-sm" href="{% url 'tracker:interview_create' %}">{% icon "plus" 16 %} {% if kind == "work" %}Log work{% else %}Log an interview{% endif %}</a>
+      {% endif %}
+    </section>
+  {% endif %}
 </div>
+{% endwith %}
+{% endblock %}
 
+{% block content %}
 {% if not user.can_log_interviews %}
-  <div class="alert alert-warning banner">
-    <span class="alert-icon">{% icon "hourglass" 20 %}</span>
-    <div class="alert-body">
-      <p class="alert-title">Your account is waiting for approval.</p>
-      <p>An admin needs to approve your account and set your role and rate. After that you can start logging your work here.</p>
+  <section class="card approval-card">
+    <div class="approval-card-body">
+      <span class="approval-icon">{% icon "hourglass" 24 %}</span>
+      <h2>Your account is waiting for approval</h2>
+      <p>An admin checks every new account and sets your role and your rate. Right after that, this page becomes your dashboard: you log your work here and see every payment.</p>
     </div>
-  </div>
-{% endif %}
-
+    <ol class="steps">
+      <li class="done"><span class="step-dot">{% icon "check" 14 %}</span><div><strong>Account created</strong><span>{{ user.date_joined|date:"M j, Y" }}</span></div></li>
+      <li class="current"><span class="step-dot"></span><div><strong>Admin approval</strong><span>Your admin chooses your role and your rate</span></div></li>
+      <li><span class="step-dot"></span><div><strong>Start logging your work</strong><span>Interviews, working hours or daily bids, depending on your role</span></div></li>
+    </ol>
+  </section>
+{% else %}
 {% with kind=user.work_kind %}
 <section class="kpis" aria-label="Summary">
   <div class="kpi">
@@ -44,17 +86,17 @@
 </section>
 
 <div class="grid-split">
-  <section class="card">
+  <section class="card fill">
     <header class="card-head"><div><h2>Your earnings</h2><p class="card-sub">Per pay week, last 8 weeks</p></div></header>
     {% if chart %}
       {% include "includes/chart.html" with chart_title="Your earnings per pay week, last 8 weeks" %}
     {% else %}
-      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Your weekly earnings appear here once you log interviews." %}
+      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Your weekly earnings appear here once you log your work." %}
     {% endif %}
   </section>
 
-  <section class="card" id="coming-up">
-    <header class="card-head"><div><h2>Coming up</h2><p class="card-sub">Unpaid work by pay week</p></div></header>
+  <section class="card fill" id="upcoming">
+    <header class="card-head"><div><h2>Upcoming payments</h2><p class="card-sub">Work waiting to be paid, by pay week</p></div></header>
     {% if upcoming %}
       <ul class="feed">
         {% for week in upcoming %}
@@ -71,8 +113,9 @@
           </li>
         {% endfor %}
       </ul>
+      <div class="card-foot total-foot"><span>Total to be paid</span><strong>{{ unpaid_totals.unpaid|money }}</strong></div>
     {% else %}
-      {% include "includes/empty.html" with empty_icon="circle-check" empty_title="Nothing waiting" empty_text="Everything you've logged has been paid." %}
+      {% include "includes/empty.html" with empty_icon="circle-check" empty_title="You're all paid up" empty_text="Everything you've logged has been paid." %}
     {% endif %}
   </section>
 </div>
@@ -87,19 +130,15 @@
   </header>
   {% if groups %}
     {% include "tracker/_interview_table.html" with interview_groups=groups return_fragment="#interviews" %}
-  {% elif user.can_log_interviews %}
-    {% if kind == "bids" %}
-      {% url 'tracker:bid_create' as create_url %}
-      {% include "includes/empty.html" with empty_icon="send" empty_title="No bids logged in "|add:period.label empty_text="Log each day's bids with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log bids" %}
-    {% elif kind == "work" %}
-      {% url 'tracker:interview_create' as create_url %}
-      {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No work logged in "|add:period.label empty_text="Log your hours with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log work" %}
-    {% else %}
-      {% url 'tracker:interview_create' as create_url %}
-      {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Log one with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log interview" %}
-    {% endif %}
+  {% elif kind == "bids" %}
+    {% url 'tracker:bid_create' as create_url %}
+    {% include "includes/empty.html" with empty_icon="send" empty_title="No bids logged in "|add:period.label empty_text="Log each day's bids with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log bids" %}
+  {% elif kind == "work" %}
+    {% url 'tracker:interview_create' as create_url %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No work logged in "|add:period.label empty_text="Log your hours with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log work" %}
   {% else %}
-    {% include "includes/empty.html" with empty_icon="hourglass" empty_title="Nothing logged yet" empty_text="You can start logging once your account is approved." %}
+    {% url 'tracker:interview_create' as create_url %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Log one with the button at the top, or use the arrows to look at other dates." empty_url=create_url empty_action="Log interview" %}
   {% endif %}
 </section>
 
@@ -113,4 +152,5 @@
   {% endif %}
 </section>
 {% endwith %}
+{% endif %}
 {% endblock %}

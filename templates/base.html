@@ -11,6 +11,7 @@
 </head>
 <body>
 {% block body %}
+<a class="skip-link" href="#content">Skip to content</a>
 {% if user.is_authenticated and user.is_staff %}
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
@@ -51,16 +52,29 @@
       <a class="brand" href="{% url 'tracker:home' %}"><span class="brand-mark">{% icon "timer" 16 %}</span>{{ brand_name }}</a>
     </header>
     <main class="content" id="content">
+      {% include "includes/messages.html" %}
 {% elif user.is_authenticated %}
+{% with kind=user.work_kind %}
 <div class="member-app">
   <header class="appbar">
     <div class="appbar-inner">
-      <a class="brand" href="{% url 'tracker:home' %}"><span class="brand-mark">{% icon "timer" 16 %}</span><span class="brand-name">{{ brand_name }}</span></a>
+      <a class="brand" href="{% url 'tracker:home' %}">
+        <span class="brand-mark">{% icon "timer" 18 %}</span>
+        <span class="brand-name">{{ brand_name }}<small>{{ brand_tagline }}</small></span>
+      </a>
+      {% if user.can_log_interviews %}
+        <nav class="appnav" aria-label="Sections">
+          {% url 'tracker:home' as home %}
+          <a href="{% if nav == 'home' %}{% else %}{{ home }}{% endif %}#overview" data-section="overview">Overview</a>
+          <a href="{% if nav == 'home' %}{% else %}{{ home }}{% endif %}#interviews" data-section="interviews">{% if kind == "bids" %}Bids{% elif kind == "work" %}Work{% else %}Interviews{% endif %}</a>
+          <a href="{% if nav == 'home' %}{% else %}{{ home }}{% endif %}#payments" data-section="payments">Payments</a>
+        </nav>
+      {% endif %}
       <div class="appbar-actions">
         {% if user.can_log_interviews and nav != "log" %}
-          {% if user.work_kind == "bids" %}
+          {% if kind == "bids" %}
             <a class="btn btn-primary" href="{% url 'tracker:bid_create' %}" aria-label="Log bids">{% icon "plus" %}<span class="btn-text">Log bids</span></a>
-          {% elif user.work_kind == "work" %}
+          {% elif kind == "work" %}
             <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}" aria-label="Log work">{% icon "plus" %}<span class="btn-text">Log work</span></a>
           {% else %}
             <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}" aria-label="Log interview">{% icon "plus" %}<span class="btn-text">Log interview</span></a>
@@ -69,7 +83,7 @@
         <details class="user-menu" data-menu>
           <summary aria-label="Account menu for {{ user.display_name }}">
             <span class="avatar avatar-sm t{{ user|avatar_tone }}">{{ user|initials }}</span>
-            <span class="user-menu-name">{{ user.display_name }}</span>
+            <span class="user-menu-name">{{ user.display_name }}<small>{{ user.get_team_role_display|default:"Team member" }}</small></span>
             {% icon "chevron-down" 16 "user-menu-caret" %}
           </summary>
           <div class="menu">
@@ -84,12 +98,21 @@
       </div>
     </div>
   </header>
-  <main class="content" id="content">
+  <div class="band">
+    <div class="band-inner">
+{% endwith %}
 {% else %}
-<main class="plain-shell">
+<main class="plain-shell" id="content">
   <div class="plain-inner">
-{% endif %}
       {% include "includes/messages.html" %}
+{% endif %}
+      {% block page_head %}{% endblock %}
+{% if user.is_authenticated and not user.is_staff %}
+    </div>
+  </div>
+  <main class="content" id="content">
+    {% include "includes/messages.html" with toast=True %}
+{% endif %}
       {% block content %}{% endblock %}
 {% if user.is_authenticated and user.is_staff %}
     </main>
@@ -97,6 +120,12 @@
 </div>
 {% elif user.is_authenticated %}
   </main>
+  <footer class="member-foot">
+    <div class="member-foot-inner">
+      <span>© {% now "Y" %} {{ brand_name }} · {{ brand_tagline }}</span>
+      <span>Questions about your pay? Ask your admin.</span>
+    </div>
+  </footer>
 </div>
 {% else %}
   </div>

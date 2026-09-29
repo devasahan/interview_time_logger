@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% load tracker_tags %}
+{% load static tracker_tags %}
 {% block title %}{{ heading }}{% endblock %}
-{% block content %}
+{% block page_head %}
 <div class="page-head">
   <div>
     <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ cancel_url }}">{% icon "arrow-left" 14 %} Back</a></nav>
@@ -9,23 +9,28 @@
     <p class="page-sub">{% if interview and interview.user_id != user.pk %}Logged by {{ interview.user.display_name }}.{% else %}Log how many bids you sent each day. You're paid per bid.{% endif %}</p>
   </div>
 </div>
-
-<form method="post" class="card form-narrow" id="bid-form">
-  {% csrf_token %}
-  <div class="form-section">
-    {% include "includes/form_errors.html" %}
-    <div class="form-section-title"><h2>Bids</h2><p>One entry per day. Sent more later that day? Edit the day and update the number.</p></div>
-    <div class="form-grid cols-2">
-      {% include "includes/field.html" with field=form.date %}
-      {% include "includes/field.html" with field=form.bids %}
-    </div>
-    {% include "includes/field.html" with field=form.notes %}
-  </div>
-  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-  <div class="form-actions">
-    <button type="submit" class="btn btn-primary">{% icon "check" %} {% if interview %}Save changes{% else %}Save bids{% endif %}</button>
-    <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
-    {% if interview %}<a class="btn btn-ghost danger push-right" href="{% url 'tracker:interview_delete' interview.pk %}?next={{ next|urlencode }}">{% icon "trash-2" %} Delete</a>{% endif %}
-  </div>
-</form>
 {% endblock %}
+{% block content %}
+<div class="form-layout">
+  <form method="post" class="card" id="bid-form" data-log-form="bids">
+    {% csrf_token %}
+    <div class="form-section">
+      {% include "includes/form_errors.html" %}
+      <div class="form-section-title"><h2>Bids</h2><p>One entry per day. Sent more later that day? Edit the day and update the number.</p></div>
+      <div class="form-grid cols-2">
+        {% include "includes/field.html" with field=form.date %}
+        {% include "includes/field.html" with field=form.bids %}
+      </div>
+      {% include "includes/field.html" with field=form.notes %}
+    </div>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% icon "check" %} {% if interview %}Save changes{% else %}Save bids{% endif %}</button>
+      <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
+      {% if interview %}<a class="btn btn-ghost danger push-right" href="{% url 'tracker:interview_delete' interview.pk %}?next={{ next|urlencode }}">{% icon "trash-2" %} Delete</a>{% endif %}
+    </div>
+  </form>
+  {% include "tracker/_pay_preview.html" %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/log-form.js' %}" defer></script>{% endblock %}

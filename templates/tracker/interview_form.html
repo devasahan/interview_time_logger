@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static tracker_tags %}
 {% block title %}{{ heading }}{% endblock %}
-{% block content %}
+{% block page_head %}
 <div class="page-head">
   <div>
     <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ cancel_url }}">{% icon "arrow-left" 14 %} Back</a></nav>
@@ -9,35 +9,39 @@
     <p class="page-sub">{% if interview and interview.user_id != user.pk %}Logged by {{ interview.user.display_name }}.{% elif kind == "work" %}Log the time you worked. Your pay is worked out from the hours.{% else %}Add the details right after the call. Your pay is worked out from the time.{% endif %}</p>
   </div>
 </div>
-
-<form method="post" class="card form-narrow" id="interview-form">
-  {% csrf_token %}
-  <div class="form-section">
-    {% include "includes/form_errors.html" %}
-    <div class="form-section-title"><h2>When</h2><p>{% if kind == "work" %}The date and the time you started and stopped.{% else %}The date and the time the call started and ended.{% endif %} Ran past midnight? Just enter the end time; it counts as the next day.</p></div>
-    <div class="form-grid cols-3">
-      {% include "includes/field.html" with field=form.date %}
-      {% include "includes/field.html" with field=form.start_time %}
-      {% include "includes/field.html" with field=form.end_time %}
-    </div>
-    <p class="duration-preview" id="duration-preview" aria-live="polite"></p>
-  </div>
-  <div class="form-section">
-    <div class="form-section-title"><h2>Details</h2><p>{% if kind == "work" %}What you worked on.{% else %}Who it was with and what it was for.{% endif %}</p></div>
-    <div class="form-grid cols-2">
-      {% include "includes/field.html" with field=form.interview_with %}
-      {% include "includes/field.html" with field=form.role %}
-    </div>
-    {% if kind == "interview" %}{% include "includes/field.html" with field=form.interview_type %}{% endif %}
-    {% include "includes/field.html" with field=form.notes %}
-  </div>
-  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-  <div class="form-actions">
-    <button type="submit" class="btn btn-primary">{% icon "check" %} {% if interview %}Save changes{% elif kind == "work" %}Save work{% else %}Save interview{% endif %}</button>
-    {% if not interview %}<button type="submit" class="btn" name="add_another" value="1">{% icon "plus" %} Save and log another</button>{% endif %}
-    <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
-    {% if interview %}<a class="btn btn-ghost danger push-right" href="{% url 'tracker:interview_delete' interview.pk %}?next={{ next|urlencode }}">{% icon "trash-2" %} Delete</a>{% endif %}
-  </div>
-</form>
 {% endblock %}
-{% block scripts %}<script src="{% static 'js/duration.js' %}"></script>{% endblock %}
+{% block content %}
+<div class="form-layout">
+  <form method="post" class="card" id="interview-form" data-log-form="time">
+    {% csrf_token %}
+    <div class="form-section">
+      {% include "includes/form_errors.html" %}
+      <div class="form-section-title"><h2>When</h2><p>{% if kind == "work" %}The date and the time you started and stopped.{% else %}The date and the time the call started and ended.{% endif %} Ran past midnight? Just enter the end time; it counts as the next day.</p></div>
+      <div class="form-grid cols-3">
+        {% include "includes/field.html" with field=form.date %}
+        {% include "includes/field.html" with field=form.start_time %}
+        {% include "includes/field.html" with field=form.end_time %}
+      </div>
+      <p class="duration-preview" id="duration-preview" aria-live="polite"></p>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title"><h2>Details</h2><p>{% if kind == "work" %}What you worked on.{% else %}Who it was with and what it was for.{% endif %}</p></div>
+      <div class="form-grid cols-2">
+        {% include "includes/field.html" with field=form.interview_with %}
+        {% include "includes/field.html" with field=form.role %}
+      </div>
+      {% if kind == "interview" %}{% include "includes/field.html" with field=form.interview_type %}{% endif %}
+      {% include "includes/field.html" with field=form.notes %}
+    </div>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% icon "check" %} {% if interview %}Save changes{% elif kind == "work" %}Save work{% else %}Save interview{% endif %}</button>
+      {% if not interview %}<button type="submit" class="btn" name="add_another" value="1">{% icon "plus" %} Save and log another</button>{% endif %}
+      <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
+      {% if interview %}<a class="btn btn-ghost danger push-right" href="{% url 'tracker:interview_delete' interview.pk %}?next={{ next|urlencode }}">{% icon "trash-2" %} Delete</a>{% endif %}
+    </div>
+  </form>
+  {% include "tracker/_pay_preview.html" %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/log-form.js' %}" defer></script>{% endblock %}

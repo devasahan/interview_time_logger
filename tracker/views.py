@@ -81,6 +81,7 @@ def home(request):
         ),
         rate_book,
     )
+    logged_today = [entry for entry in in_range if entry.date == today]
 
     return render(
         request,
@@ -89,6 +90,8 @@ def home(request):
             "nav": "home",
             "today": today,
             "rate": rate_book.current_rate(user.pk),
+            "today_totals": Totals.of(logged_today),
+            "today_bids": next((entry for entry in logged_today if entry.is_bid_log), None),
             "week_totals": Totals.of(i for i in in_range if week.contains(i.date)),
             "month_totals": Totals.of(i for i in in_range if month.contains(i.date)),
             "unpaid_totals": Totals.of(unpaid),
@@ -121,6 +124,34 @@ def _saved_message(entry):
     return f"Logged {duration(entry.duration_minutes)} on {entry.interview_with}."
 
 
+def _pay_preview(request, kind, entry=None):
+    """What the form's side card needs to show the pay for the entry as it's typed."""
+    owner = entry.user if entry else request.user
+    today = timezone.localdate()
+    rate_book = RateBook([owner.pk])
+    preview = {
+        "unit": "bid" if kind == "bids" else "h",
+        "unit_word": "bid" if kind == "bids" else "hour",
+        "rate": rate_book.current_rate(owner.pk),
+        "today": today,
+        # Every rate change, so the preview uses the rate of the date that's picked.
+        "rates": [
+            [start.isoformat(), str(rate)]
+            for start, rate in owner.rates.order_by("effective_from").values_list("effective_from", "rate")
+        ],
+    }
+    if entry:
+        # From the database: a bound form may already have changed the instance.
+        stored = price_interviews(Interview.objects.filter(pk=entry.pk), rate_book)
+        preview["saved"] = stored[0].amount if stored else None
+    if owner.pk == request.user.pk:
+        week = Period.week_of(today)
+        preview["week"] = Totals.of(
+            price_interviews(owner.interviews.filter(date__range=(week.start, week.end)), rate_book)
+        )
+    return preview
+
+
 def _log_form_page(request, form, kind, entry=None, **extra):
     template = "tracker/bid_form.html" if kind == "bids" else "tracker/interview_form.html"
     new_heading, edit_heading = HEADINGS[kind]
@@ -133,6 +164,7 @@ def _log_form_page(request, form, kind, entry=None, **extra):
             "kind": kind,
             "heading": edit_heading if entry else new_heading,
             "interview": entry,
+            "pay": _pay_preview(request, kind, entry),
             **extra,
         },
     )
@@ -293,7 +325,7 @@ def interview_delete(request, pk):
             "nav": "interviews" if request.user.is_staff else "home",
             "title": "Delete these bids?" if interview.is_bid_log else f"Delete this {noun}?",
             "message": "This can't be undone.",
-            "details": _entry_details(interview),
+            "details": _entry_details(interview)[0 if request.user.is_staff else 1 :],
             "confirm_label": f"Delete {noun}",
             "next": back,
             "cancel_url": back,

@@ -133,5 +133,5 @@ tracker/     work entries (interviews, developer hours, bids), rates, payouts, a
   services.py  pay calculations, summaries, recording and undoing payouts
   views.py     member home page      manage_views.py  admin pages
 templates/   HTML templates
-static/      CSS, fonts, favicon, small JS (menus, duration preview, table layout)
+static/      CSS, fonts, favicon, small JS (menus, pay preview on the log forms, table layout)
 ```

@@ -1,0 +1,16 @@
+{% load tracker_tags %}
+{% comment %}Side card of the log forms: what the entry pays. log-form.js updates it as the member types.{% endcomment %}
+<aside class="card pay-card" data-pay-preview data-unit="{{ pay.unit }}" data-unit-word="{{ pay.unit_word }}" data-currency="{{ currency_symbol }}" data-today="{{ pay.today|date:'Y-m-d' }}" aria-labelledby="pay-title">
+  <div class="card-body">
+    <h2 class="pay-label" id="pay-title">{% icon "coins" 16 %} {% if interview %}Pay for this entry{% else %}You'll earn{% endif %}</h2>
+    <p class="pay-amount{% if pay.saved is None %} is-empty{% endif %}" data-pay-amount>{% if pay.saved is not None %}{{ pay.saved|money }}{% else %}{{ 0|money }}{% endif %}</p>
+    <p class="pay-formula" data-pay-formula aria-live="polite">{% if pay.rate is None %}No rate is set yet.{% elif kind == "bids" %}Enter the number of bids to see the pay.{% else %}Enter the start and end time to see the pay.{% endif %}</p>
+  </div>
+  <dl class="pay-facts">
+    <div><dt>Rate</dt><dd data-pay-rate>{% if pay.rate is not None %}{{ pay.rate|money }} per {{ pay.unit_word }}{% else %}Not set yet{% endif %}</dd></div>
+    {% if interview %}<div><dt>Saved now</dt><dd>{{ pay.saved|money }}</dd></div>{% endif %}
+    {% if pay.week %}<div><dt>This week so far</dt><dd>{% if kind == "bids" %}{{ pay.week.bids|bid_count }}{% else %}{{ pay.week.minutes|duration }}{% endif %} · {{ pay.week.earned|money }}</dd></div>{% endif %}
+  </dl>
+  <p class="pay-note">{% icon "info" 14 %}<span>{% if kind == "bids" %}Pay is bids × rate per bid.{% else %}Pay is hours × hourly rate.{% endif %} Paid weekly. Paid entries are locked.</span></p>
+  {{ pay.rates|json_script:"pay-rates" }}
+</aside>

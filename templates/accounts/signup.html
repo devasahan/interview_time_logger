@@ -3,7 +3,7 @@
 {% block auth_card_class %} wide{% endblock %}
 {% block auth_content %}
 <h1>Create your account</h1>
-<p class="lead">After you sign up, an admin approves your account and sets your role and hourly rate.</p>
+<p class="lead">After you sign up, an admin approves your account and sets your role and rate.</p>
 <form method="post">
   {% csrf_token %}
   {% include "includes/form_errors.html" %}
