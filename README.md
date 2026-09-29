@@ -88,14 +88,38 @@ All settings are environment variables. For local use, put them in `.env` (see `
 
 ## Deploy
 
-Checklist for any host:
+### Free: PythonAnywhere
 
-1. **Use Postgres** and set `DATABASE_URL`. Most hosts wipe the local disk on every deploy, so a SQLite file would lose your data.
+A free PythonAnywhere account runs the app at `https://<your-username>.pythonanywhere.com`. Its disk is permanent, so the data lives in an SQLite file and nothing expires. No credit card is needed. Free web apps must be renewed every 3 months with one click on the **Web** tab (PythonAnywhere emails you before that).
+
+1. Sign up for a free **Beginner** account at [pythonanywhere.com](https://www.pythonanywhere.com/). Your username becomes the site's address.
+2. Open **Consoles → Bash** and run:
+   ```bash
+   git clone https://github.com/devasahan/interview_time_logger.git
+   cd interview_time_logger
+   bash deploy/pythonanywhere-setup.sh
+   ```
+   It asks for your time zone and currency, installs the app, creates the database and your admin account, and then prints exactly what to enter on the **Web** tab.
+3. Do the printed steps on the **Web** tab (a manual-configuration web app, the WSGI file, the virtualenv, static files and **Force HTTPS**), then click **Reload**.
+
+To update the site after new changes are merged on GitHub, run this in a Bash console:
+
+```bash
+bash ~/interview_time_logger/deploy/pythonanywhere-update.sh
+```
+
+**Back up your data:** now and then, download `interview_time_logger/db.sqlite3` from the **Files** tab.
+
+### Other hosts
+
+Checklist for any other host:
+
+1. **Use Postgres** and set `DATABASE_URL`. Most hosts wipe the local disk on every deploy, so a SQLite file would lose your data. (PythonAnywhere is the exception.)
 2. Set `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS`. Leave `DJANGO_DEBUG` unset.
 3. Set `TIME_ZONE`, `CURRENCY_SYMBOL` and, if you like, `WEEK_START_DAY`.
 4. Set `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` so your admin account is created on the first start. You can remove them afterwards.
 
-### With Docker (Render, Railway, Fly.io, DigitalOcean, any VPS)
+#### With Docker (Render, Railway, Fly.io, DigitalOcean, any VPS)
 
 The included `Dockerfile` builds the app, collects static files, and on start runs migrations, creates the admin account if asked, and starts gunicorn on `$PORT` (default 8000).
 
@@ -107,7 +131,7 @@ docker run -p 8000:8000 --env-file production.env interview-time-logger
 - **Render:** create a PostgreSQL database and a Web Service from this repo (it detects the Dockerfile). Set the environment variables, with `DATABASE_URL` from the database's internal URL. Your `*.onrender.com` hostname is allowed automatically. Health check path: `/healthz/`.
 - **Railway:** add a Postgres database to the project and reference its `DATABASE_URL` in the app service. Generate a public domain; it's allowed automatically.
 
-### Without Docker
+#### Without Docker
 
 - Build: `pip install -r requirements.txt && python manage.py collectstatic --noinput`
 - Before each start (or as a release command): `python manage.py migrate && python manage.py ensure_admin`
@@ -134,4 +158,5 @@ tracker/     work entries (interviews, developer hours, bids), rates, payouts, a
   views.py     member home page      manage_views.py  admin pages
 templates/   HTML templates
 static/      CSS, fonts, favicon, small JS (menus, pay preview on the log forms, table layout)
+deploy/      setup and update scripts for PythonAnywhere
 ```
