@@ -22,15 +22,15 @@
 {% if period.is_current %}
   <div class="alert alert-info banner">
     <span class="alert-icon">{% icon "info" 20 %}</span>
-    <div class="alert-body"><p>This week isn't over yet. Your team can still log interviews for it.</p></div>
+    <div class="alert-body"><p>This week isn't over yet. Your team can still log work for it.</p></div>
   </div>
 {% endif %}
 
 <section class="kpis" aria-label="Summary">
   <div class="kpi">
-    <div class="kpi-top"><span class="kpi-label">Logged</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
-    <div class="kpi-value">{{ totals.minutes|duration }}</div>
-    <div class="kpi-foot">{{ totals.count }} interview{{ totals.count|pluralize }} · {{ totals.earned|money }}</div>
+    <div class="kpi-top"><span class="kpi-label">Earned</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-value">{{ totals.earned|money }}</div>
+    <div class="kpi-foot">{{ totals|work }}</div>
   </div>
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">Paid</span><span class="kpi-icon tone-green">{% icon "circle-check" %}</span></div>
@@ -40,7 +40,7 @@
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
     <div class="kpi-value">{{ totals.unpaid|money }}</div>
-    <div class="kpi-foot">{% if totals.unpriced %}+ {{ totals.unpriced }} interview{{ totals.unpriced|pluralize }} without a rate{% else %}still owed{% endif %}</div>
+    <div class="kpi-foot">{% if totals.unpriced %}+ {{ totals.unpriced }} entr{{ totals.unpriced|pluralize:"y,ies" }} without a rate{% else %}still owed{% endif %}</div>
   </div>
 </section>
 
@@ -49,7 +49,7 @@
   {% if rows %}
     <div class="table-wrap">
       <table class="table responsive">
-        <thead><tr><th>Member</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <thead><tr><th>Member</th><th>Work</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr></thead>
         <tbody>
           {% for member, member_totals in rows %}
             <tr>
@@ -59,8 +59,7 @@
                   <span class="person-name">{{ member.display_name }}</span>
                 </a>
               </td>
-              <td class="num" data-label="Interviews">{{ member_totals.count }}</td>
-              <td class="num" data-label="Time">{{ member_totals.minutes|duration }}</td>
+              <td data-label="Work">{{ member_totals|work }}</td>
               <td class="num" data-label="Earned">{{ member_totals.earned|money }}</td>
               <td class="num" data-label="Paid">{{ member_totals.paid|money }}</td>
               <td class="num" data-label="To be paid"><span class="strong">{{ member_totals.unpaid|money }}</span></td>
@@ -79,7 +78,7 @@
       </table>
     </div>
   {% else %}
-    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in this week" empty_text="Use the arrows to go to another week." %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="Nothing logged in this week" empty_text="Use the arrows to go to another week." %}
   {% endif %}
 </section>
 
@@ -92,7 +91,7 @@
 
 {% if interviews %}
   <section class="card">
-    <header class="card-head"><div><h2>All interviews this week</h2><p class="card-sub">You can also mark single interviews as paid here</p></div></header>
+    <header class="card-head"><div><h2>Everything logged this week</h2><p class="card-sub">You can also mark single entries as paid here</p></div></header>
     {% include "tracker/_interview_table.html" with interviews=interviews %}
   </section>
 {% endif %}

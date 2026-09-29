@@ -39,7 +39,7 @@ from .services import (
     undo_payout,
     weekly_chart,
 )
-from .templatetags.tracker_tags import money
+from .templatetags.tracker_tags import money, work
 from .views import period_context, safe_next
 
 User = get_user_model()
@@ -156,13 +156,12 @@ def _save_rate(request, member, rate, effective_from, team_role=""):
         member.is_approved = True
         member.team_role = team_role
         member.save(update_fields=["is_approved", "team_role"])
-        details = ", ".join(filter(None, [member.get_team_role_display(), f"{money(rate)}/h"]))
-        messages.success(
-            request, f"{member.display_name} is approved ({details}) and can start logging interviews."
-        )
+        details = ", ".join(filter(None, [member.get_team_role_display(), f"{money(rate)}/{member.rate_unit}"]))
+        what = {"bids": "bids", "work": "work"}.get(member.work_kind, "interviews")
+        messages.success(request, f"{member.display_name} is approved ({details}) and can start logging {what}.")
     else:
         messages.success(
-            request, f"{member.display_name}'s rate is {money(rate)}/h from {_long_date(effective_from)}."
+            request, f"{member.display_name}'s rate is {money(rate)}/{member.rate_unit} from {_long_date(effective_from)}."
         )
 
 
@@ -189,6 +188,9 @@ def member_detail(request, pk):
         form = form_class(initial={"rate": current_rate, "effective_from": today})
         if member.status == "pending":
             form.fields["team_role"].widget.attrs["autofocus"] = True
+        else:
+            form.fields["rate"].label = "Rate per bid" if member.logs_bids else "Hourly rate"
+            form.fields["rate"].help_text = ""
 
     week, month = Period.week_of(today), Period.month_of(today)
     in_range = price_interviews(
@@ -242,9 +244,15 @@ def member_set_role(request, pk):
     member = get_object_or_404(User, pk=pk)
     form = RoleForm(request.POST)
     if form.is_valid():
+        old_unit = member.rate_unit
         member.team_role = form.cleaned_data["team_role"]
         member.save(update_fields=["team_role"])
-        messages.success(request, f"{member.display_name}'s role is now {member.get_team_role_display()}.")
+        message = f"{member.display_name}'s role is now {member.get_team_role_display()}."
+        rate = RateBook([member.pk]).current_rate(member.pk)
+        if member.rate_unit != old_unit and rate is not None:
+            unit = "bid" if member.logs_bids else "hour"
+            message += f" Their rate of {money(rate)} is now paid per {unit}, so set a new rate if that's not right."
+        messages.success(request, message)
     else:
         messages.error(request, form.errors["team_role"][0])
     return redirect("tracker:manage_member", pk=member.pk)
@@ -271,9 +279,11 @@ def member_toggle_active(request, pk):
 @staff_required
 @require_POST
 def member_delete_rate(request, pk, rate_pk):
-    rate = get_object_or_404(HourlyRate, pk=rate_pk, user_id=pk)
+    rate = get_object_or_404(HourlyRate.objects.select_related("user"), pk=rate_pk, user_id=pk)
     rate.delete()
-    messages.success(request, f"Removed the {money(rate.rate)}/h rate from {_long_date(rate.effective_from)}.")
+    messages.success(
+        request, f"Removed the {money(rate.rate)}/{rate.user.rate_unit} rate from {_long_date(rate.effective_from)}."
+    )
     return redirect("tracker:manage_member", pk=pk)
 
 
@@ -294,7 +304,7 @@ def interviews(request):
         "manage/interviews.html",
         {
             "nav": "interviews",
-            "heading": selected.display_name if selected else "All interviews",
+            "heading": selected.display_name if selected else "Work log",
             "members": User.objects.all(),
             "selected_member": selected,
             "member_rows": [] if selected else totals_by_member(priced),
@@ -349,7 +359,7 @@ def payroll_week(request, start):
             "period": period,
             "rows": totals_by_member(interviews),
             "totals": Totals.of(interviews),
-            "interviews": sorted(interviews, key=attrgetter("date", "start_time")),
+            "interviews": sorted(interviews, key=attrgetter("sort_key")),
             "payouts": Payout.objects.filter(period_start=period.start).select_related("user", "paid_by"),
             "show_user": True,
             "show_actions": True,
@@ -371,13 +381,13 @@ def payroll_pay(request, start):
         member = get_object_or_404(User, pk=member_id)
         queryset = queryset.filter(user=member)
 
-    interviews = sorted(price_interviews(queryset), key=attrgetter("date", "start_time"))
+    interviews = sorted(price_interviews(queryset), key=attrgetter("sort_key"))
     payable = [interview for interview in interviews if interview.amount is not None]
     skipped = totals_by_member([interview for interview in interviews if interview.amount is None])
     if not payable:
         if skipped:
             names = ", ".join(m.display_name for m, _ in skipped)
-            messages.error(request, f"Set an hourly rate for {names} before paying.")
+            messages.error(request, f"Set a rate for {names} before paying.")
         else:
             messages.info(request, "Everything in this week is already paid.")
         return redirect(week_url)
@@ -457,7 +467,7 @@ def payout_undo(request, pk):
                 ("Member", payout.user.display_name),
                 ("Week", format_range(payout.period_start, payout.period_end)),
                 ("Amount", money(payout.amount)),
-                ("Interviews", payout.interview_count),
+                ("Work", work(payout)),
                 ("Paid on", _long_date(timezone.localtime(payout.paid_at).date())),
                 ("Note", payout.note or "—"),
             ],
@@ -471,10 +481,10 @@ def payout_undo(request, pk):
 @staff_required
 @require_POST
 def interview_set_status(request, pk):
-    """Switch one interview between "To be paid" and "Paid" from any interview list."""
+    """Switch one entry between "To be paid" and "Paid" from any work list."""
     interview = get_object_or_404(Interview.objects.select_related("user"), pk=pk)
     back = safe_next(request, reverse("tracker:manage_interviews"))
-    what = f"{interview.user.display_name}'s interview with {interview.interview_with} on {_long_date(interview.date)}"
+    what = f"{interview.user.display_name}'s {interview.description} on {_long_date(interview.date)}"
     status = request.POST.get("status")
 
     if status == "paid" and not interview.is_paid:

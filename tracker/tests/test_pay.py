@@ -19,7 +19,7 @@ from tracker.services import (
     undo_payout,
 )
 
-from .factories import make_admin, make_interview, make_user, set_rate
+from .factories import make_admin, make_bids, make_interview, make_user, make_work, set_rate
 
 WEEK = Period.week_of(date(2026, 9, 21))
 
@@ -183,3 +183,50 @@ class PayoutTests(TestCase):
         self.assertIsNone(self.s1.payout)
         self.assertIsNone(self.s1.paid_amount)
         self.assertFalse(Payout.objects.exists())
+
+
+class BidPayTests(TestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.va = make_user("juan", team_role="virtual_assistant")
+        set_rate(self.va, "0.08")
+
+    def test_bids_are_paid_per_bid(self):
+        [entry] = price_interviews([make_bids(self.va, bids=150)])
+        self.assertEqual((entry.rate, entry.amount), (Decimal("0.08"), Decimal("12.00")))
+        totals = Totals.of([entry])
+        self.assertEqual((totals.bids, totals.minutes, totals.interview_count), (150, 0, 0))
+        self.assertEqual(totals.earned, Decimal("12.00"))
+
+    def test_paying_bids_records_them_on_the_payout(self):
+        entry = make_bids(self.va, bids=150)
+        [payout] = record_payouts(
+            period=WEEK, interview_ids=[entry.pk], expected_total=Decimal("12.00"), paid_by=self.admin
+        )
+        self.assertEqual((payout.total_bids, payout.interview_count, payout.total_minutes), (150, 0, 0))
+        self.assertEqual(payout.amount, Decimal("12.00"))
+        entry.refresh_from_db()
+        mark_unpaid(entry)
+        self.assertFalse(Payout.objects.exists())
+
+    def test_developer_work_counts_hours_but_not_interviews(self):
+        dev = make_user("dana", team_role="developer")
+        set_rate(dev, 40)
+        work = make_work(dev, start=time(9, 0), end=time(11, 0))
+        interview = make_interview(dev, day=date(2026, 9, 22))
+        totals = Totals.of(price_interviews([work, interview]))
+        self.assertEqual((totals.interview_count, totals.minutes, totals.earned), (1, 180, Decimal("120.00")))
+        [payout] = record_payouts(
+            period=WEEK, interview_ids=[work.pk, interview.pk], expected_total=Decimal("120.00"), paid_by=self.admin
+        )
+        self.assertEqual((payout.interview_count, payout.total_minutes, payout.total_bids), (1, 180, 0))
+
+    def test_a_week_of_bids_is_one_flat_list(self):
+        entries = price_interviews(
+            [make_bids(self.va, day=date(2026, 9, 22), bids=10), make_bids(self.va, day=date(2026, 9, 21), bids=20)]
+        )
+        [group] = group_for_display(WEEK, entries)
+        self.assertEqual(group.label, "")
+        self.assertEqual([entry.bids for entry in group.interviews], [20, 10])
+        [month_group] = group_for_display(Period.month_of(date(2026, 9, 21)), entries)
+        self.assertEqual(month_group.label, "Sep 21 – 27")

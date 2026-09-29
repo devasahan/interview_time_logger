@@ -8,7 +8,7 @@ from django.utils import timezone
 from tracker.models import HourlyRate, Interview, InterviewType, Payout
 from tracker.periods import Period
 
-from .factories import PASSWORD, interview_type, make_admin, make_interview, make_user, set_rate
+from .factories import PASSWORD, interview_type, make_admin, make_bids, make_interview, make_user, set_rate
 
 
 def last_week():
@@ -214,7 +214,7 @@ class AdminFlowTests(TestCase):
             {"team_role": "developer", "rate": ""},
             follow=True,
         )
-        self.assertContains(response, "Enter an hourly rate, for example 20.00.")
+        self.assertContains(response, "Enter a rate, for example 20.00.")
         newbie.refresh_from_db()
         self.assertFalse(newbie.is_approved)
 
@@ -223,7 +223,7 @@ class AdminFlowTests(TestCase):
             reverse("tracker:manage_member", args=[newbie.pk]),
             {"team_role": "developer", "rate": "", "effective_from": timezone.localdate().isoformat()},
         )
-        self.assertContains(response, "Enter an hourly rate, for example 20.00.")
+        self.assertContains(response, "Enter a rate, for example 20.00.")
         newbie.refresh_from_db()
         self.assertFalse(newbie.is_approved)
 
@@ -268,6 +268,17 @@ class AdminFlowTests(TestCase):
         self.assertContains(self.client.get(reverse("tracker:manage_team")), "Developer")
         # Changing the role doesn't touch the rate history.
         self.assertEqual(HourlyRate.objects.filter(user=member).count(), 1)
+        # Hours stay hours, so there's nothing to check.
+        self.assertNotContains(response, "is now paid per")
+
+    def test_becoming_a_virtual_assistant_flags_the_rate(self):
+        member = make_user(team_role="interviewer")
+        set_rate(member, 20)
+        response = self.client.post(
+            reverse("tracker:manage_member_role", args=[member.pk]), {"team_role": "virtual_assistant"}, follow=True
+        )
+        self.assertContains(response, "Their rate of $20.00 is now paid per bid")
+        self.assertContains(response, "Rate per bid")
 
     def test_rejects_negative_rates(self):
         member = make_user()
@@ -437,3 +448,146 @@ class LoginFlowTests(TestCase):
         make_user("alex")
         response = self.client.post(reverse("accounts:login"), {"username": "alex", "password": PASSWORD})
         self.assertRedirects(response, reverse("tracker:home"))
+
+
+class VirtualAssistantFlowTests(TestCase):
+    """Virtual assistants log a daily bid count and are paid per bid."""
+
+    def setUp(self):
+        self.va = make_user("juan", team_role="virtual_assistant")
+        set_rate(self.va, "0.08")
+        self.client.force_login(self.va)
+        self.today = timezone.localdate()
+
+    def test_home_is_about_bids(self):
+        home = self.client.get(reverse("tracker:home"))
+        self.assertContains(home, "Log bids")
+        self.assertContains(home, "Your rate is $0.08/bid")
+        self.assertNotContains(home, "Log interview")
+
+    def test_log_the_days_bids(self):
+        response = self.client.post(
+            reverse("tracker:bid_create"), {"date": self.today.isoformat(), "bids": "150", "notes": "Upwork"}
+        )
+        self.assertRedirects(
+            response, f"{reverse('tracker:home')}?period=week&date={self.today.isoformat()}#interviews"
+        )
+        entry = Interview.objects.get()
+        self.assertEqual((entry.user, entry.bids, entry.duration_minutes), (self.va, 150, 0))
+        home = self.client.get(response.url)
+        self.assertContains(home, "150 bids")
+        self.assertContains(home, "$12.00")
+
+    def test_one_entry_per_day(self):
+        data = {"date": self.today.isoformat(), "bids": "10"}
+        self.client.post(reverse("tracker:bid_create"), data)
+        response = self.client.post(reverse("tracker:bid_create"), data)
+        self.assertContains(response, "You already logged bids for")
+        self.assertEqual(Interview.objects.count(), 1)
+
+    def test_rejects_bad_numbers_and_future_days(self):
+        response = self.client.post(reverse("tracker:bid_create"), {"date": self.today.isoformat(), "bids": "0"})
+        self.assertContains(response, "Enter at least 1 bid.")
+        later = (self.today + timedelta(days=3)).isoformat()
+        response = self.client.post(reverse("tracker:bid_create"), {"date": later, "bids": "5"})
+        self.assertContains(response, "hasn&#x27;t happened yet")
+        self.assertFalse(Interview.objects.exists())
+
+    def test_the_interview_form_leads_to_the_bid_form(self):
+        self.assertRedirects(
+            self.client.get(reverse("tracker:interview_create")), reverse("tracker:bid_create"), fetch_redirect_response=False
+        )
+
+    def test_edit_and_delete_bids(self):
+        entry = make_bids(self.va, day=self.today, bids=40)
+        self.assertRedirects(
+            self.client.get(reverse("tracker:interview_edit", args=[entry.pk])),
+            reverse("tracker:bid_edit", args=[entry.pk]),
+            fetch_redirect_response=False,
+        )
+        self.client.post(reverse("tracker:bid_edit", args=[entry.pk]), {"date": self.today.isoformat(), "bids": "55"})
+        entry.refresh_from_db()
+        self.assertEqual(entry.bids, 55)
+        response = self.client.post(reverse("tracker:interview_delete", args=[entry.pk]), follow=True)
+        self.assertContains(response, "Bids deleted.")
+        self.assertFalse(Interview.objects.exists())
+
+    def test_other_roles_use_their_own_form(self):
+        self.client.force_login(make_user("priya", team_role="interviewer"))
+        self.assertRedirects(
+            self.client.get(reverse("tracker:bid_create")), reverse("tracker:interview_create"), fetch_redirect_response=False
+        )
+
+
+class DeveloperFlowTests(TestCase):
+    """Developers log hours on a project and are paid per hour."""
+
+    def setUp(self):
+        self.dev = make_user("dana", team_role="developer")
+        set_rate(self.dev, 40)
+        self.client.force_login(self.dev)
+        self.today = timezone.localdate()
+
+    def test_log_work(self):
+        page = self.client.get(reverse("tracker:interview_create"))
+        self.assertContains(page, "Log work")
+        self.assertContains(page, "Project")
+        self.assertNotContains(page, "Interview type")
+        data = {
+            "date": self.today.isoformat(),
+            "start_time": "09:00",
+            "end_time": "11:00",
+            "interview_with": "Acme website",
+            "role": "Build the login page",
+            "notes": "",
+        }
+        self.client.post(reverse("tracker:interview_create"), data)
+        entry = Interview.objects.get()
+        self.assertEqual((entry.kind, entry.duration_minutes, entry.interview_type), ("work", 120, None))
+        home = self.client.get(reverse("tracker:home"))
+        self.assertContains(home, "Log work")
+        self.assertContains(home, "$80.00")
+
+    def test_project_and_task_are_required(self):
+        data = {"date": self.today.isoformat(), "start_time": "09:00", "end_time": "10:00", "notes": ""}
+        response = self.client.post(reverse("tracker:interview_create"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Interview.objects.exists())
+
+
+class PayingBidsTests(TestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.client.force_login(self.admin)
+        self.week = last_week()
+
+    def test_approve_a_virtual_assistant_with_a_rate_per_bid(self):
+        newbie = make_user("juan", approved=False)
+        response = self.client.post(
+            reverse("tracker:manage_member_approve", args=[newbie.pk]),
+            {"team_role": "virtual_assistant", "rate": "0.08"},
+            follow=True,
+        )
+        self.assertContains(response, "is approved (Virtual assistant, $0.08/bid)")
+
+    def test_pay_a_week_of_bids(self):
+        va = make_user("juan", team_role="virtual_assistant")
+        set_rate(va, "0.08")
+        entry = make_bids(va, day=self.week.start, bids=150)
+
+        week_page = self.client.get(reverse("tracker:manage_payroll_week", args=[self.week.start]))
+        self.assertContains(week_page, "150 bids")
+        self.assertContains(week_page, "Pay $12.00")
+        pay_url = reverse("tracker:manage_payroll_pay", args=[self.week.start]) + f"?user={va.pk}"
+        confirm = self.client.get(pay_url)
+        self.assertContains(confirm, "$0.08/bid")
+        self.client.post(pay_url, {"interview_ids": str(entry.pk), "expected_total": "12.00", "note": ""})
+        payout = Payout.objects.get()
+        self.assertEqual((payout.amount, payout.total_bids), (Decimal("12.00"), 150))
+
+        # The work log and the member's own page show it as paid bids.
+        self.assertContains(self.client.get(reverse("tracker:manage_interviews"), {"date": self.week.start}), "150 bids")
+        self.client.force_login(va)
+        home = self.client.get(reverse("tracker:home"), {"date": self.week.start.isoformat()})
+        self.assertContains(home, "badge-paid")
+        self.assertContains(home, "150 bids")

@@ -38,7 +38,7 @@ class InterviewAdminForm(forms.ModelForm):
 @admin.register(Interview)
 class InterviewAdmin(admin.ModelAdmin):
     form = InterviewAdminForm
-    list_display = ("date", "user", "start_time", "end_time", "duration_minutes", "interview_with", "role", "interview_type", "payout")
+    list_display = ("date", "user", "start_time", "end_time", "duration_minutes", "bids", "interview_with", "role", "interview_type", "payout")
     list_filter = ("interview_type", ("payout", admin.EmptyFieldListFilter), "user")
     list_select_related = ("user", "interview_type", "payout")
     search_fields = ("interview_with", "role", "notes", "user__username", "user__first_name", "user__last_name")
@@ -48,9 +48,9 @@ class InterviewAdmin(admin.ModelAdmin):
 
 @admin.register(Payout)
 class PayoutAdmin(admin.ModelAdmin):
-    """Read-only: record and undo payments from the Payroll page so interviews stay in sync."""
+    """Read-only: record and undo payments from the Payroll page so work entries stay in sync."""
 
-    list_display = ("paid_at", "user", "period_start", "period_end", "interview_count", "amount", "paid_by")
+    list_display = ("paid_at", "user", "period_start", "period_end", "interview_count", "total_minutes", "total_bids", "amount", "paid_by")
     list_filter = ("user",)
     list_select_related = ("user", "paid_by")
 

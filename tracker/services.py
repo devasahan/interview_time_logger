@@ -9,7 +9,7 @@ from itertools import groupby
 from operator import attrgetter
 
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from .models import HourlyRate, Interview, Payout
@@ -23,8 +23,15 @@ def amount_for(minutes, rate):
     return (Decimal(minutes) * rate / 60).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+def entry_amount(entry, rate):
+    """Pay for one entry: bids x rate for a bid entry, hours x rate for an interview."""
+    if entry.is_bid_log:
+        return (Decimal(entry.bids) * rate).quantize(CENT, rounding=ROUND_HALF_UP)
+    return amount_for(entry.duration_minutes, rate)
+
+
 class RateBook:
-    """Hourly rate history for a set of members, loaded in a single query."""
+    """Rate history (per hour or per bid) for a set of members, loaded in a single query."""
 
     def __init__(self, user_ids=None):
         rates = HourlyRate.objects.order_by("user_id", "effective_from")
@@ -64,18 +71,20 @@ def price_interviews(interviews, rate_book=None):
             interview.amount = interview.paid_amount
         else:
             interview.rate = rate_book.rate_for(interview.user_id, interview.date)
-            interview.amount = None if interview.rate is None else amount_for(interview.duration_minutes, interview.rate)
+            interview.amount = None if interview.rate is None else entry_amount(interview, interview.rate)
     return interviews
 
 
 @dataclass
 class Totals:
-    count: int = 0
-    minutes: int = 0
+    count: int = 0  # entries of every kind
+    interview_count: int = 0
+    minutes: int = 0  # interviews and developer work
+    bids: int = 0
     earned: Decimal = ZERO
     paid: Decimal = ZERO
     unpaid: Decimal = ZERO
-    unpriced: int = 0  # unpaid interviews whose member has no rate yet
+    unpriced: int = 0  # unpaid entries whose member has no rate yet
 
     @classmethod
     def of(cls, interviews):
@@ -86,7 +95,12 @@ class Totals:
 
     def add(self, interview):
         self.count += 1
-        self.minutes += interview.duration_minutes
+        if interview.is_bid_log:
+            self.bids += interview.bids
+        else:
+            self.minutes += interview.duration_minutes
+            if interview.is_interview:
+                self.interview_count += 1
         if interview.amount is None:
             self.unpriced += 1
             return
@@ -105,9 +119,19 @@ class Group:
 
 
 def group_for_display(period, interviews):
-    """Chronological groups: by day for a week, by pay week for a month."""
+    """Chronological groups: by day for a week, by pay week for a month.
+
+    A week of nothing but bids is one unlabelled group: each day's bids are a
+    single row already, so a heading per day would only repeat it.
+    """
+    if period.kind == WEEK and interviews and all(interview.is_bid_log for interview in interviews):
+        group = Group("")
+        for interview in sorted(interviews, key=attrgetter("sort_key")):
+            group.interviews.append(interview)
+            group.totals.add(interview)
+        return [group]
     groups = {}
-    for interview in sorted(interviews, key=attrgetter("date", "start_time")):
+    for interview in sorted(interviews, key=attrgetter("sort_key")):
         if period.kind == WEEK:
             key = interview.date
             label = f"{interview.date:%A, %b} {interview.date.day}"
@@ -239,7 +263,7 @@ class PayoutError(Exception):
 
 
 CHANGED_SINCE_REVIEW = (
-    "Those interviews changed since you opened this page (edited, deleted or already paid). "
+    "That work changed since you opened this page (edited, deleted or already paid). "
     "Please review the week again."
 )
 
@@ -261,7 +285,7 @@ def record_payouts(*, period, interview_ids, expected_total, paid_by, note=""):
         raise PayoutError(CHANGED_SINCE_REVIEW)
     price_interviews(interviews)
     if any(interview.amount is None for interview in interviews):
-        raise PayoutError("Set an hourly rate for everyone in this payment first.")
+        raise PayoutError("Set a rate for everyone in this payment first.")
     if sum(interview.amount for interview in interviews) != expected_total:
         raise PayoutError(CHANGED_SINCE_REVIEW)
 
@@ -272,8 +296,9 @@ def record_payouts(*, period, interview_ids, expected_total, paid_by, note=""):
             user_id=user_id,
             period_start=period.start,
             period_end=period.end,
-            interview_count=len(group),
+            interview_count=sum(1 for interview in group if interview.is_interview),
             total_minutes=sum(interview.duration_minutes for interview in group),
+            total_bids=sum(interview.bids or 0 for interview in group),
             amount=sum((interview.amount for interview in group), ZERO),
             note=note,
             paid_by=paid_by,
@@ -314,12 +339,17 @@ def mark_unpaid(interview):
     payout = Payout.objects.select_for_update().get(pk=interview.payout_id)
     Interview.objects.filter(pk=interview.pk).update(payout=None, paid_rate=None, paid_amount=None)
     remaining = payout.interviews.aggregate(
-        count=Count("id"), minutes=Sum("duration_minutes"), amount=Sum("paid_amount")
+        count=Count("id"),
+        interviews=Count("id", filter=Q(interview_type__isnull=False)),
+        minutes=Sum("duration_minutes"),
+        bids=Sum("bids"),
+        amount=Sum("paid_amount"),
     )
     if not remaining["count"]:
         payout.delete()
         return
-    payout.interview_count = remaining["count"]
-    payout.total_minutes = remaining["minutes"]
+    payout.interview_count = remaining["interviews"]
+    payout.total_minutes = remaining["minutes"] or 0
+    payout.total_bids = remaining["bids"] or 0
     payout.amount = remaining["amount"]
-    payout.save(update_fields=["interview_count", "total_minutes", "amount"])
+    payout.save(update_fields=["interview_count", "total_minutes", "total_bids", "amount"])

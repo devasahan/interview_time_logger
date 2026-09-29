@@ -38,6 +38,24 @@ class User(AbstractUser):
         return self.is_active and (self.is_approved or self.is_staff)
 
     @property
+    def logs_bids(self):
+        """Virtual assistants log how many bids they sent each day and are paid per bid."""
+        return self.team_role == TeamRole.VIRTUAL_ASSISTANT
+
+    @property
+    def work_kind(self):
+        """What this member logs: "bids", "work" (developers) or "interview" (everyone else)."""
+        if self.logs_bids:
+            return "bids"
+        if self.team_role == TeamRole.DEVELOPER:
+            return "work"
+        return "interview"
+
+    @property
+    def rate_unit(self):
+        return "bid" if self.logs_bids else "h"
+
+    @property
     def status(self):
         if not self.is_active:
             return "deactivated"

@@ -26,9 +26,9 @@
 
 <section class="kpis" aria-label="Summary">
   <div class="kpi">
-    <div class="kpi-top"><span class="kpi-label">Logged this week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
-    <div class="kpi-value">{{ week_totals.minutes|duration }}</div>
-    <div class="kpi-foot">{{ week_totals.count }} interview{{ week_totals.count|pluralize }} · {{ week_totals.earned|money }}</div>
+    <div class="kpi-top"><span class="kpi-label">Earned this week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
+    <div class="kpi-value">{{ week_totals.earned|money }}</div>
+    <div class="kpi-foot">{{ week_totals|work }}</div>
   </div>
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
@@ -56,7 +56,7 @@
     {% if chart %}
       {% include "includes/chart.html" with chart_title="Team earnings per pay week, last 8 weeks" %}
     {% else %}
-      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Weekly totals appear here as your team logs interviews." %}
+      {% include "includes/empty.html" with empty_icon="trending-up" empty_title="No earnings yet" empty_text="Weekly totals appear here as your team logs work." %}
     {% endif %}
   </section>
 
@@ -72,7 +72,7 @@
             <span class="feed-icon tone-amber">{% icon "calendar-clock" 16 %}</span>
             <div class="feed-main">
               <p class="feed-title">{{ summary.period.label }}</p>
-              <p class="feed-sub">{% if summary.period.is_current %}This week · {% endif %}{{ summary.member_count }} member{{ summary.member_count|pluralize }} · {{ summary.totals.minutes|duration }}{% if summary.totals.unpriced %} · {{ summary.totals.unpriced }} without rate{% endif %}</p>
+              <p class="feed-sub">{% if summary.period.is_current %}This week · {% endif %}{{ summary.member_count }} member{{ summary.member_count|pluralize }} · {{ summary.totals|work_short }}{% if summary.totals.unpriced %} · {{ summary.totals.unpriced }} without rate{% endif %}</p>
             </div>
             <div class="feed-side">
               <span class="strong">{{ summary.totals.unpaid|money }}</span>
@@ -95,7 +95,7 @@
   {% if rows %}
     <div class="table-wrap">
       <table class="table responsive">
-        <thead><tr><th>Member</th><th class="num">Rate</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">Earned this week</th><th class="num">Total to be paid</th></tr></thead>
+        <thead><tr><th>Member</th><th class="num">Rate</th><th class="num">Logged this week</th><th class="num">Earned this week</th><th class="num">Total to be paid</th></tr></thead>
         <tbody>
           {% for row in rows %}
             <tr>
@@ -105,9 +105,8 @@
                   <span class="cell-stack"><span class="person-name">{{ row.member.display_name }}</span><span class="sub">{% if row.member.team_role %}{{ row.member.get_team_role_display }}{% else %}{{ row.member.email|default:row.member.username }}{% endif %}</span></span>
                 </a>
               </td>
-              <td class="num" data-label="Rate">{% if row.rate is not None %}{{ row.rate|money }}/h{% else %}<span class="badge badge-muted">not set</span>{% endif %}</td>
-              <td class="num" data-label="Interviews">{{ row.week.count }}</td>
-              <td class="num" data-label="Time">{{ row.week.minutes|duration }}</td>
+              <td class="num" data-label="Rate">{% if row.rate is not None %}{{ row.rate|money }}/{{ row.member.rate_unit }}{% else %}<span class="badge badge-muted">not set</span>{% endif %}</td>
+              <td class="num" data-label="Logged this week">{{ row.week|work_short }}</td>
               <td class="num" data-label="Earned this week">{{ row.week.earned|money }}</td>
               <td class="num" data-label="Total to be paid"><span class="strong">{{ row.unpaid.unpaid|money }}</span></td>
             </tr>
@@ -122,13 +121,13 @@
 
 <section class="card">
   <header class="card-head">
-    <div><h2>Latest logged interviews</h2><p class="card-sub">Change the status to Paid once you've paid for a call</p></div>
-    <a class="more" href="{% url 'tracker:manage_interviews' %}">All interviews {% icon "arrow-right" 16 %}</a>
+    <div><h2>Latest logged work</h2><p class="card-sub">Change the status to Paid once you've paid for it</p></div>
+    <a class="more" href="{% url 'tracker:manage_interviews' %}">Work log {% icon "arrow-right" 16 %}</a>
   </header>
   {% if recent %}
     {% include "tracker/_interview_table.html" with interviews=recent show_user=True can_set_paid=True %}
   {% else %}
-    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="Nothing logged yet" empty_text="Interviews appear here as your team logs them." %}
+    {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="Nothing logged yet" empty_text="Interviews, work hours and bids appear here as your team logs them." %}
   {% endif %}
 </section>
 {% endblock %}

@@ -1,16 +1,19 @@
 # AsahanTechPartners — work & payment tracker
 
-A web app where AsahanTechPartners team members (interviewers, developers and virtual assistants) log their work, and the admin pays them weekly at each member's own hourly rate.
+A web app where AsahanTechPartners team members (interviewers, developers and virtual assistants) log their work, and the admin pays them weekly at each member's own rate: per hour for interviewers and developers, per bid for virtual assistants.
 
 **Members can:**
-- Sign up, then wait for the admin to approve them and set their role and hourly rate.
-- Log each interview: date, start and end time, who the interview was with, the role, and the interview type (HR, Technical, Culture Call, …).
-- See everything on one page: this week's and this month's totals, an earnings chart, their interviews by week or by month, what's still to be paid, and every payment they've received.
+- Sign up, then wait for the admin to approve them and set their role and rate.
+- Log their work. What they log depends on their role:
+  - **Interviewers** log each interview: date, start and end time, who the interview was with, the role, and the interview type (HR, Technical, Culture Call, …).
+  - **Developers** log their working hours: date, start and end time, the project and the task.
+  - **Virtual assistants** log how many bids they sent each day.
+- See everything on one page, worded for their role: this week's and this month's totals (hours, or bids for virtual assistants), an earnings chart, their work by week or by month, what's still to be paid, and every payment they've received.
 
 **The admin can:**
-- Approve new sign-ups in one step on the **Team** page by choosing their role (Interviewer, Developer or Virtual assistant) and entering their hourly rate, and change either later. Only the admin can do this.
-- See everyone's interviews by week or month, filtered by member.
-- Change any interview's pay status between **To be paid** and **Paid** right in the interview lists (Overview, Interviews, each pay week). Members see the new status, with the date it was paid.
+- Approve new sign-ups in one step on the **Team** page by choosing their role (Interviewer, Developer or Virtual assistant) and entering their rate (per hour, or per bid for a virtual assistant), and change either later. Only the admin can do this.
+- See everyone's work by week or month on the **Work log** page, filtered by member.
+- Change any entry's pay status between **To be paid** and **Paid** right in the lists (Overview, Work log, each pay week). Members see the new status, with the date it was paid.
 - Or run weekly payroll: review a week, pay a member (or everyone) in one go, and record it with an optional note such as a transfer reference. A payment recorded by mistake can be undone.
 - Manage the list of interview types.
 - Deactivate members who leave. Their history is kept.
@@ -41,10 +44,10 @@ Open http://127.0.0.1:8000 and log in with the admin account.
 ### Try the whole flow
 
 1. Open a private browser window, go to http://127.0.0.1:8000/accounts/signup/ and create a member account. It says "waiting for approval".
-2. In your admin window go to **Team**, pick a role and type an hourly rate next to the new member, then click **Approve**.
-3. As the member, click **+ Log interview** and add a few interviews. They show up on the member's home page, where **Week** and **Month** switch the interview list.
-4. As the admin, change an interview's status to **Paid** in **Interviews** (or open **Payroll**, pick the week, click **Pay …** and **Mark as paid** to pay a whole week).
-5. As the member, the home page now shows the payment under **Payment history**, and those interviews show as **Paid**.
+2. In your admin window go to **Team**, pick a role and type a rate next to the new member (per hour, or per bid for a virtual assistant), then click **Approve**.
+3. As the member, click **+ Log interview** (developers see **Log work**, virtual assistants **Log bids**) and add a few entries. They show up on the member's home page, where **Week** and **Month** switch the list.
+4. As the admin, change an entry's status to **Paid** in **Work log** (or open **Payroll**, pick the week, click **Pay …** and **Mark as paid** to pay a whole week).
+5. As the member, the home page now shows the payment under **Payment history**, and those entries show as **Paid**.
 
 Run the tests with `python manage.py test`.
 
@@ -52,12 +55,14 @@ Run the tests with `python manage.py test`.
 
 ## How pay works
 
-- **Amount = duration × hourly rate**, rounded to the cent for each interview.
+- **Interviews and developer work: amount = duration × hourly rate**, rounded to the cent for each entry.
+- **Bids: amount = number of bids × rate per bid.** A virtual assistant logs one bid count per day (to correct a day, they edit it), so 120 bids at $0.08 is $9.60.
+- The role decides the rate's unit. When you change a member's role between virtual assistant and the others, set a new rate from that date too.
 - **Pay weeks run Monday–Sunday** by default. Change this with `WEEK_START_DAY`.
-- **Rate changes have an effective date.** An interview uses the rate in effect on its date. A member's first rate also covers anything they logged before it was set.
-- **Paid means locked.** When you mark a week as paid, the rate and amount of each interview are saved with the payment. Later rate changes never alter what was already paid. Members can't edit or delete paid interviews. To fix one, set its status back to **To be paid** (or undo the payment) first.
-- **You pay exactly what you reviewed.** If a member edits, adds or deletes something while you have the payment page open, recording the payment is refused and you're asked to review again. Interviews logged later for an already-paid week show up as a new unpaid amount for that week.
-- Interviews that run past midnight are handled: enter 23:30 → 00:30 and it counts as one hour ending the next day. An interview can't be longer than 12 hours, can't overlap another one from the same member (so double submissions are blocked), and can't be in the future.
+- **Rate changes have an effective date.** An entry uses the rate in effect on its date. A member's first rate also covers anything they logged before it was set.
+- **Paid means locked.** When you mark a week as paid, the rate and amount of each entry are saved with the payment. Later rate changes never alter what was already paid. Members can't edit or delete paid entries. To fix one, set its status back to **To be paid** (or undo the payment) first.
+- **You pay exactly what you reviewed.** If a member edits, adds or deletes something while you have the payment page open, recording the payment is refused and you're asked to review again. Work logged later for an already-paid week shows up as a new unpaid amount for that week.
+- Times that run past midnight are handled: enter 23:30 → 00:30 and it counts as one hour ending the next day. One interview or work entry can't be longer than 12 hours, can't overlap another one from the same member (so double submissions are blocked), and can't be in the future. Bids can't be logged for future days either.
 
 ---
 
@@ -123,7 +128,7 @@ Forgotten passwords: the admin can set a new one in the built-in Django admin at
 ```
 config/      settings, URLs, WSGI entry point
 accounts/    user model, sign-up, login (username or email), ensure_admin command
-tracker/     interviews, hourly rates, payouts, all pages
+tracker/     work entries (interviews, developer hours, bids), rates, payouts, all pages
   periods.py   pay weeks and months
   services.py  pay calculations, summaries, recording and undoing payouts
   views.py     member home page      manage_views.py  admin pages

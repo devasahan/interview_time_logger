@@ -24,7 +24,7 @@
     <nav class="sidebar-nav">
       <p class="nav-section">Admin</p>
       <a class="nav-item" href="{% url 'tracker:manage_overview' %}"{% if nav == "overview" %} aria-current="page"{% endif %}>{% icon "layout-dashboard" %}<span>Overview</span></a>
-      <a class="nav-item" href="{% url 'tracker:manage_interviews' %}"{% if nav == "interviews" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>Interviews</span></a>
+      <a class="nav-item" href="{% url 'tracker:manage_interviews' %}"{% if nav == "interviews" %} aria-current="page"{% endif %}>{% icon "calendar-days" %}<span>Work log</span></a>
       <a class="nav-item" href="{% url 'tracker:manage_payroll' %}"{% if nav == "payroll" %} aria-current="page"{% endif %}>{% icon "wallet" %}<span>Payroll</span></a>
       <a class="nav-item" href="{% url 'tracker:manage_team' %}"{% if nav == "team" %} aria-current="page"{% endif %}>{% icon "users" %}<span>Team</span>{% if pending_approvals %}<span class="nav-count" title="Waiting for approval">{{ pending_approvals }}</span>{% endif %}</a>
       <a class="nav-item" href="{% url 'tracker:manage_types' %}"{% if nav == "types" %} aria-current="page"{% endif %}>{% icon "tags" %}<span>Interview types</span></a>
@@ -58,7 +58,13 @@
       <a class="brand" href="{% url 'tracker:home' %}"><span class="brand-mark">{% icon "timer" 16 %}</span><span class="brand-name">{{ brand_name }}</span></a>
       <div class="appbar-actions">
         {% if user.can_log_interviews and nav != "log" %}
-          <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}" aria-label="Log interview">{% icon "plus" %}<span class="btn-text">Log interview</span></a>
+          {% if user.work_kind == "bids" %}
+            <a class="btn btn-primary" href="{% url 'tracker:bid_create' %}" aria-label="Log bids">{% icon "plus" %}<span class="btn-text">Log bids</span></a>
+          {% elif user.work_kind == "work" %}
+            <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}" aria-label="Log work">{% icon "plus" %}<span class="btn-text">Log work</span></a>
+          {% else %}
+            <a class="btn btn-primary" href="{% url 'tracker:interview_create' %}" aria-label="Log interview">{% icon "plus" %}<span class="btn-text">Log interview</span></a>
+          {% endif %}
         {% endif %}
         <details class="user-menu" data-menu>
           <summary aria-label="Account menu for {{ user.display_name }}">

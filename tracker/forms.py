@@ -5,7 +5,7 @@ from django.db.models import Q
 
 from accounts.models import TeamRole
 
-from .models import Interview, InterviewType, validate_time_slot
+from .models import Interview, InterviewType, validate_time_slot, validate_work_date
 from .periods import EARLIEST_DATE, LATEST_DATE
 
 
@@ -23,19 +23,15 @@ class TimeInput(forms.TimeInput):
         super().__init__(attrs=attrs, format="%H:%M")
 
 
-class InterviewForm(forms.ModelForm):
+class TimedEntryForm(forms.ModelForm):
+    """A date and a time range: interviews and developer work."""
+
+    kind = "work"
+    required_fields = ("start_time", "end_time", "interview_with", "role")
+
     class Meta:
         model = Interview
-        fields = ["date", "start_time", "end_time", "interview_with", "role", "interview_type", "notes"]
-        labels = {
-            "start_time": "From",
-            "end_time": "To",
-            "interview_with": "Interview with",
-            "role": "Role",
-        }
-        help_texts = {
-            "interview_with": "The company or person you interviewed with.",
-        }
+        fields = ["date", "start_time", "end_time", "interview_with", "role", "notes"]
         widgets = {
             "date": DateInput(),
             "start_time": TimeInput(),
@@ -48,7 +44,41 @@ class InterviewForm(forms.ModelForm):
         self.owner = owner
         if self.instance.pk is None:
             self.instance.user = owner
+        # Optional in the database (bid entries leave them empty) but needed here.
+        for name in self.required_fields:
+            self.fields[name].required = True
 
+    def clean(self):
+        cleaned = super().clean()
+        day, start, end = cleaned.get("date"), cleaned.get("start_time"), cleaned.get("end_time")
+        if day is not None and start is not None and end is not None:
+            try:
+                validate_time_slot(
+                    user_id=self.owner.pk, day=day, start=start, end=end, exclude_pk=self.instance.pk, kind=self.kind
+                )
+            except ValidationError as error:
+                self.add_error(None, error)
+        return cleaned
+
+
+class InterviewForm(TimedEntryForm):
+    kind = "interview"
+    required_fields = TimedEntryForm.required_fields + ("interview_type",)
+
+    class Meta(TimedEntryForm.Meta):
+        fields = ["date", "start_time", "end_time", "interview_with", "role", "interview_type", "notes"]
+        labels = {
+            "start_time": "From",
+            "end_time": "To",
+            "interview_with": "Interview with",
+            "role": "Role",
+        }
+        help_texts = {
+            "interview_with": "The company or person you interviewed with.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Offer active types, plus the current one when editing an older entry.
         available = Q(is_active=True)
         if self.instance.interview_type_id:
@@ -58,26 +88,74 @@ class InterviewForm(forms.ModelForm):
         self.fields["interview_with"].widget.attrs["placeholder"] = "e.g. Acme Corp or Jane Smith"
         self.fields["role"].widget.attrs["placeholder"] = "e.g. Senior Backend Engineer"
 
+
+class WorkForm(TimedEntryForm):
+    """Developers log time on a project; the project and task reuse the interview fields."""
+
+    class Meta(TimedEntryForm.Meta):
+        labels = {"start_time": "From", "end_time": "To", "interview_with": "Project", "role": "Task"}
+        help_texts = {"interview_with": "The client or project you worked on."}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["interview_with"].widget.attrs["placeholder"] = "e.g. Acme website"
+        self.fields["role"].widget.attrs["placeholder"] = "e.g. Build the sign-up page"
+
+
+MAX_BIDS_PER_DAY = 10_000
+
+
+class BidForm(forms.ModelForm):
+    """Virtual assistants log how many bids they sent, once per day."""
+
+    class Meta:
+        model = Interview
+        fields = ["date", "bids", "notes"]
+        labels = {"bids": "Number of bids"}
+        help_texts = {"bids": "How many bids you sent that day."}
+        widgets = {"date": DateInput(), "notes": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, owner, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.owner = owner
+        if self.instance.pk is None:
+            self.instance.user = owner
+        bids = self.fields["bids"]
+        bids.required = True
+        bids.error_messages["required"] = "Enter how many bids you sent, for example 40."
+        bids.widget.attrs.update({"min": 1, "max": MAX_BIDS_PER_DAY, "inputmode": "numeric", "placeholder": "e.g. 40"})
+
+    def clean_bids(self):
+        bids = self.cleaned_data["bids"]
+        if bids < 1:
+            raise ValidationError("Enter at least 1 bid.")
+        if bids > MAX_BIDS_PER_DAY:
+            raise ValidationError("That's more bids than fit in one day. Check the number.")
+        return bids
+
     def clean(self):
         cleaned = super().clean()
-        day, start, end = cleaned.get("date"), cleaned.get("start_time"), cleaned.get("end_time")
-        if day is not None and start is not None and end is not None:
+        day = cleaned.get("date")
+        if day is not None:
             try:
-                validate_time_slot(
-                    user_id=self.owner.pk, day=day, start=start, end=end, exclude_pk=self.instance.pk
-                )
+                validate_work_date(day, "bids")
             except ValidationError as error:
                 self.add_error(None, error)
+                return cleaned
+            already = Interview.objects.filter(user=self.owner, date=day, bids__isnull=False).exclude(pk=self.instance.pk)
+            if already.exists():
+                self.add_error("date", f"You already logged bids for {day:%b} {day.day}. Edit that day instead.")
         return cleaned
 
 
 def hourly_rate_field():
     return forms.DecimalField(
-        label="Hourly rate",
+        label="Rate",
         max_digits=10,
         decimal_places=2,
         min_value=0,
-        error_messages={"required": "Enter an hourly rate, for example 20.00."},
+        help_text="Per hour, or per bid for virtual assistants.",
+        error_messages={"required": "Enter a rate, for example 20.00."},
     )
 
 
@@ -101,7 +179,7 @@ class RateForm(forms.Form):
     effective_from = forms.DateField(
         widget=DateInput(),
         validators=[MinValueValidator(EARLIEST_DATE), MaxValueValidator(LATEST_DATE)],
-        help_text="Applies to unpaid interviews on or after this date. Paid interviews keep the rate they were paid at.",
+        help_text="Applies to unpaid work on or after this date. Paid work keeps the rate it was paid at.",
     )
 
 

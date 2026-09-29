@@ -6,8 +6,7 @@
         {% if show_member %}<th>Member</th>{% endif %}
         <th>Paid on</th>
         <th>Pay week</th>
-        <th class="num">Interviews</th>
-        <th class="num">Time</th>
+        <th>Work</th>
         <th class="num">Amount</th>
         <th>Note</th>
         {% if show_undo %}<th><span class="sr-only">Actions</span></th>{% endif %}
@@ -28,8 +27,7 @@
           <td data-label="Pay week" class="nowrap">
             {% if show_undo %}<a href="{% url 'tracker:manage_payroll_week' payout.period_start %}">{{ payout.period_label }}</a>{% else %}{{ payout.period_label }}{% endif %}
           </td>
-          <td class="num" data-label="Interviews">{{ payout.interview_count }}</td>
-          <td class="num" data-label="Time">{{ payout.total_minutes|duration }}</td>
+          <td data-label="Work">{{ payout|work }}</td>
           <td class="num" data-label="Amount"><span class="strong">{{ payout.amount|money }}</span></td>
           <td data-label="Note">{{ payout.note|default:"—" }}</td>
           {% if show_undo %}

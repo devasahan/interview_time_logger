@@ -30,26 +30,26 @@
     <span class="alert-icon">{% icon "user-plus" 20 %}</span>
     <div class="alert-body">
       <p class="alert-title">{{ member.display_name }} signed up and is waiting for approval.</p>
-      <p>Choose their role and hourly rate below to approve them. They can start logging interviews right away.</p>
+      <p>Choose their role and rate below to approve them. They can start logging work right away.</p>
     </div>
   </div>
 {% endif %}
 
 <section class="kpis" aria-label="Summary">
   <div class="kpi">
-    <div class="kpi-top"><span class="kpi-label">Hourly rate</span><span class="kpi-icon tone-green">{% icon "wallet" %}</span></div>
-    <div class="kpi-value">{% if rate is not None %}{{ rate|money }}<span class="kpi-unit">/h</span>{% else %}Not set{% endif %}</div>
-    <div class="kpi-foot">{% if rate is None %}set it below{% elif rate_since %}since {{ rate_since|date:"M j, Y" }}{% else %}first rate{% endif %}{% if next_rate %} · {{ next_rate.rate|money }}/h from {{ next_rate.effective_from|date:"M j" }}{% endif %}</div>
+    <div class="kpi-top"><span class="kpi-label">{% if member.logs_bids %}Rate per bid{% else %}Hourly rate{% endif %}</span><span class="kpi-icon tone-green">{% icon "wallet" %}</span></div>
+    <div class="kpi-value">{% if rate is not None %}{{ rate|money }}<span class="kpi-unit">/{{ member.rate_unit }}</span>{% else %}Not set{% endif %}</div>
+    <div class="kpi-foot">{% if rate is None %}set it below{% elif rate_since %}since {{ rate_since|date:"M j, Y" }}{% else %}first rate{% endif %}{% if next_rate %} · {{ next_rate.rate|money }}/{{ member.rate_unit }} from {{ next_rate.effective_from|date:"M j" }}{% endif %}</div>
   </div>
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">This week</span><span class="kpi-icon tone-indigo">{% icon "clock" %}</span></div>
-    <div class="kpi-value">{{ week_totals.minutes|duration }}</div>
-    <div class="kpi-foot">{{ week_totals.count }} interview{{ week_totals.count|pluralize }} · {{ week_totals.earned|money }}</div>
+    <div class="kpi-value">{% if member.logs_bids %}{{ week_totals.bids|bid_count }}{% else %}{{ week_totals.minutes|duration }}{% endif %}</div>
+    <div class="kpi-foot">{{ week_totals.earned|money }} earned{% if member.logs_bids %} · {{ week_totals.count }} day{{ week_totals.count|pluralize }} logged{% elif week_totals.interview_count %} · {{ week_totals.interview_count }} interview{{ week_totals.interview_count|pluralize }}{% endif %}</div>
   </div>
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">This month</span><span class="kpi-icon tone-sky">{% icon "coins" %}</span></div>
     <div class="kpi-value">{{ month_totals.earned|money }}</div>
-    <div class="kpi-foot">{{ month_totals.minutes|duration }} · {{ month_totals.paid|money }} paid</div>
+    <div class="kpi-foot">{{ month_totals|work_short }} · {{ month_totals.paid|money }} paid</div>
   </div>
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
@@ -60,7 +60,7 @@
 
 <div class="grid-split">
   <section class="card">
-    <header class="card-head"><div><h2>{% if member.status == "pending" %}Approve: role and hourly rate{% else %}Hourly rate{% endif %}</h2><p class="card-sub">Only admins can set or change rates.</p></div></header>
+    <header class="card-head"><div><h2>{% if member.status == "pending" %}Approve: role and rate{% elif member.logs_bids %}Rate per bid{% else %}Hourly rate{% endif %}</h2><p class="card-sub">Only admins can set or change rates.</p></div></header>
     <form method="post" novalidate>
       {% csrf_token %}
       <div class="card-body">
@@ -80,13 +80,13 @@
           <li class="feed-item">
             <span class="feed-icon tone-green">{% icon "banknote" 16 %}</span>
             <div class="feed-main">
-              <p class="feed-title">{{ item.rate|money }}/h</p>
+              <p class="feed-title">{{ item.rate|money }}/{{ member.rate_unit }}</p>
               <p class="feed-sub">From {{ item.effective_from|date:"M j, Y" }}{% if item.set_by %} · set by {{ item.set_by.display_name }}{% endif %}</p>
-              {% if forloop.last %}<p class="feed-sub">First rate, also covers earlier interviews</p>{% endif %}
+              {% if forloop.last %}<p class="feed-sub">First rate, also covers earlier work</p>{% endif %}
             </div>
-            <form method="post" action="{% url 'tracker:manage_member_rate_delete' member.pk item.pk %}" onsubmit="return confirm('Remove this rate? Unpaid interviews will be recalculated.');">
+            <form method="post" action="{% url 'tracker:manage_member_rate_delete' member.pk item.pk %}" onsubmit="return confirm('Remove this rate? Unpaid work will be recalculated.');">
               {% csrf_token %}
-              <button type="submit" class="btn btn-ghost btn-sm danger" aria-label="Remove the {{ item.rate|money }}/h rate from {{ item.effective_from|date:'M j, Y' }}">{% icon "trash-2" 16 %} Remove</button>
+              <button type="submit" class="btn btn-ghost btn-sm danger" aria-label="Remove the {{ item.rate|money }}/{{ member.rate_unit }} rate from {{ item.effective_from|date:'M j, Y' }}">{% icon "trash-2" 16 %} Remove</button>
             </form>
           </li>
         {% endfor %}
@@ -104,7 +104,7 @@
               <span class="feed-icon tone-amber">{% icon "calendar-clock" 16 %}</span>
               <div class="feed-main">
                 <p class="feed-title">{{ summary.period.label }}</p>
-                <p class="feed-sub">{{ summary.totals.count }} interview{{ summary.totals.count|pluralize }} · {{ summary.totals.minutes|duration }}{% if summary.totals.unpriced %} · rate not set{% endif %}</p>
+                <p class="feed-sub">{{ summary.totals|work }}{% if summary.totals.unpriced %} · rate not set{% endif %}</p>
               </div>
               <div class="feed-side">
                 <span class="strong">{{ summary.totals.unpaid|money }}</span>
@@ -134,7 +134,7 @@
           <form method="post" action="{% url 'tracker:manage_member_active' member.pk %}">
             {% csrf_token %}
             {% if member.is_active %}
-              <p class="muted">Deactivated members can't sign in. Their interviews and payments are kept, so you can still pay what they're owed.</p>
+              <p class="muted">Deactivated members can't sign in. Their work and payments are kept, so you can still pay what they're owed.</p>
               <button type="submit" class="btn btn-danger" style="margin-top: 14px">{% icon "lock" %} Deactivate account</button>
             {% else %}
               <p class="muted">This account is deactivated and can't sign in.</p>

@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>Team</h1>
-    <p class="page-sub">Approve new sign-ups by choosing their role and hourly rate. Open a member to change either later.</p>
+    <p class="page-sub">Approve new sign-ups by choosing their role and rate (per hour, or per bid for virtual assistants). Open a member to change either later.</p>
   </div>
 </div>
 
@@ -25,7 +25,7 @@
 {% if waiting %}
   <section class="card" id="waiting">
     <header class="card-head">
-      <div><h2>Waiting for approval</h2><p class="card-sub">{{ waiting|length }} new sign-up{{ waiting|length|pluralize }}. Choose a role and an hourly rate, then click Approve.</p></div>
+      <div><h2>Waiting for approval</h2><p class="card-sub">{{ waiting|length }} new sign-up{{ waiting|length|pluralize }}. Choose a role and a rate, then click Approve.</p></div>
     </header>
     <ul class="approvals">
       {% for member in waiting %}
@@ -37,12 +37,12 @@
           <form method="post" action="{% url 'tracker:manage_member_approve' member.pk %}" class="approve-form" novalidate>
             {% csrf_token %}
             <label class="sr-only" for="role-{{ member.pk }}">Role for {{ member.display_name }}</label>
-            <select id="role-{{ member.pk }}" name="team_role">
+            <select id="role-{{ member.pk }}" name="team_role" data-rate-unit-for="rate-{{ member.pk }}">
               <option value="">Choose a role</option>
               {% for value, label in role_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
             </select>
-            <label class="sr-only" for="rate-{{ member.pk }}">Hourly rate for {{ member.display_name }}</label>
-            <input type="number" id="rate-{{ member.pk }}" name="rate" min="0" step="0.01" inputmode="decimal" placeholder="Rate / h">
+            <label class="sr-only" for="rate-{{ member.pk }}">Rate for {{ member.display_name }}</label>
+            <input type="number" id="rate-{{ member.pk }}" name="rate" min="0" step="0.01" inputmode="decimal" placeholder="Rate">
             <button type="submit" class="btn btn-primary">{% icon "user-check" 16 %} Approve</button>
           </form>
         </li>
@@ -56,7 +56,7 @@
   <div class="table-wrap">
     <table class="table responsive">
       <thead>
-        <tr><th>Member</th><th>Role</th><th>Status</th><th class="num">Hourly rate</th><th class="num">This week</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr>
+        <tr><th>Member</th><th>Role</th><th>Status</th><th class="num">Rate</th><th class="num">This week</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr>
       </thead>
       <tbody>
         {% for row in rows %}
@@ -73,8 +73,8 @@
               {% elif row.member.status == "admin" %}<span class="badge badge-admin">Admin</span>
               {% else %}<span class="badge badge-deactivated">Deactivated</span>{% endif %}
             </td>
-            <td class="num" data-label="Hourly rate">{% if row.rate is not None %}{{ row.rate|money }}/h{% else %}—{% endif %}</td>
-            <td class="num" data-label="This week">{{ row.week.minutes|duration }}</td>
+            <td class="num" data-label="Rate">{% if row.rate is not None %}{{ row.rate|money }}/{{ row.member.rate_unit }}{% else %}—{% endif %}</td>
+            <td class="num" data-label="This week">{{ row.week|work_short }}</td>
             <td class="num" data-label="To be paid">{{ row.unpaid.unpaid|money }}</td>
             <td class="actions"><a class="btn btn-sm" href="{% url 'tracker:manage_member' row.member.pk %}">Manage</a></td>
           </tr>

@@ -2,11 +2,12 @@ from datetime import date, time
 from unittest import mock
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from tracker.models import validate_time_slot
+from tracker.models import Interview, validate_time_slot
 
-from .factories import make_interview, make_user
+from .factories import make_bids, make_interview, make_user, make_work
 
 TODAY = date(2026, 9, 28)
 
@@ -72,3 +73,32 @@ class TimeSlotTests(TestCase):
     def test_editing_ignores_itself(self, _):
         interview = make_interview(self.user, day=TODAY, start=time(9, 0), end=time(10, 0))
         self.check(TODAY, time(9, 0), time(10, 30), exclude_pk=interview.pk)
+
+
+class EntryKindTests(TestCase):
+    def setUp(self):
+        self.user = make_user()
+
+    def test_kinds(self):
+        self.assertEqual(make_interview(self.user).kind, "interview")
+        self.assertEqual(make_work(self.user, day=date(2026, 9, 22)).kind, "work")
+        bids = make_bids(self.user, bids=40)
+        self.assertEqual((bids.kind, bids.duration_minutes, bids.rate_unit), ("bids", 0, "bid"))
+        self.assertEqual(bids.description, "40 bids")
+
+    def test_an_entry_has_times_or_bids_but_not_both(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Interview.objects.create(user=self.user, date=TODAY)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Interview.objects.create(user=self.user, date=TODAY, bids=5, start_time=time(9, 0), end_time=time(10, 0))
+
+    def test_one_bid_entry_per_member_per_day(self):
+        make_bids(self.user, day=TODAY)
+        make_bids(make_user("other"), day=TODAY)  # other members are fine
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            make_bids(self.user, day=TODAY)
+
+    @mock.patch("tracker.models.timezone.localdate", return_value=TODAY)
+    def test_bid_entries_do_not_block_interview_times(self, _):
+        make_bids(self.user, day=TODAY)
+        validate_time_slot(user_id=self.user.pk, day=TODAY, start=time(9, 0), end=time(10, 0))

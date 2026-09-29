@@ -62,6 +62,15 @@
     });
   });
 
+  // Approving a new member: the rate is per bid for virtual assistants, per hour otherwise.
+  document.querySelectorAll("[data-rate-unit-for]").forEach(function (select) {
+    var input = document.getElementById(select.getAttribute("data-rate-unit-for"));
+    if (!input) return;
+    select.addEventListener("change", function () {
+      input.placeholder = !select.value ? "Rate" : select.value === "virtual_assistant" ? "Rate / bid" : "Rate / h";
+    });
+  });
+
   // Tables in cards narrower than 940px are stacked by app.css. Show the normal table
   // wherever all its columns fit (on phones the stacked cards read better, so keep them).
   // Tables with the same columns switch together, so a month's weeks all look alike.

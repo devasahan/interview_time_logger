@@ -16,7 +16,7 @@
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">To be paid</span><span class="kpi-icon tone-amber">{% icon "hourglass" %}</span></div>
     <div class="kpi-value">{{ unpaid_totals.unpaid|money }}</div>
-    <div class="kpi-foot">{{ members_owed }} member{{ members_owed|pluralize }} · {{ unpaid_totals.minutes|duration }}{% if unpaid_totals.unpriced %} · {{ unpaid_totals.unpriced }} without a rate{% endif %}</div>
+    <div class="kpi-foot">{{ members_owed }} member{{ members_owed|pluralize }} · {{ unpaid_totals|work_short }}{% if unpaid_totals.unpriced %} · {{ unpaid_totals.unpriced }} without a rate{% endif %}</div>
   </div>
   <div class="kpi">
     <div class="kpi-top"><span class="kpi-label">Paid in {{ month.start|date:"F" }}</span><span class="kpi-icon tone-green">{% icon "circle-check" %}</span></div>
@@ -35,14 +35,13 @@
   {% if weeks %}
     <div class="table-wrap">
       <table class="table responsive">
-        <thead><tr><th>Pay week</th><th class="num">Members</th><th class="num">Interviews</th><th class="num">Time</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <thead><tr><th>Pay week</th><th class="num">Members</th><th>Work</th><th class="num">To be paid</th><th><span class="sr-only">Actions</span></th></tr></thead>
         <tbody>
           {% for summary in weeks %}
             <tr>
               <td class="lead" data-label="Pay week"><span class="strong">{{ summary.period.label }}</span>{% if summary.period.is_current %} <span class="badge badge-admin">This week</span>{% endif %}</td>
               <td class="num" data-label="Members">{{ summary.member_count }}</td>
-              <td class="num" data-label="Interviews">{{ summary.totals.count }}</td>
-              <td class="num" data-label="Time">{{ summary.totals.minutes|duration }}</td>
+              <td data-label="Work">{{ summary.totals|work }}</td>
               <td class="num" data-label="To be paid"><span class="strong">{{ summary.totals.unpaid|money }}</span>{% if summary.totals.unpriced %} <span class="badge badge-muted">{{ summary.totals.unpriced }} without rate</span>{% endif %}</td>
               <td class="actions"><a class="btn btn-sm" href="{% url 'tracker:manage_payroll_week' summary.period.start %}">Review &amp; pay {% icon "arrow-right" 16 %}</a></td>
             </tr>
@@ -51,7 +50,7 @@
       </table>
     </div>
   {% else %}
-    {% include "includes/empty.html" with empty_icon="circle-check" empty_title="Everyone is paid up" empty_text="New interviews will show up here by pay week." %}
+    {% include "includes/empty.html" with empty_icon="circle-check" empty_title="Everyone is paid up" empty_text="New work will show up here by pay week." %}
   {% endif %}
 </section>
 

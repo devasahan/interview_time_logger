@@ -40,3 +40,15 @@ def make_interview(user, day=date(2026, 9, 21), start=time(9, 0), end=time(10, 0
     }
     defaults.update(extra)
     return Interview.objects.create(user=user, date=day, start_time=start, end_time=end, **defaults)
+
+
+def make_work(user, day=date(2026, 9, 21), start=time(9, 0), end=time(10, 0), **extra):
+    """Developer work: a time range on a project, without an interview type."""
+    defaults = {"interview_with": "Acme website", "role": "Build the sign-up page"}
+    defaults.update(extra)
+    return Interview.objects.create(user=user, date=day, start_time=start, end_time=end, **defaults)
+
+
+def make_bids(user, day=date(2026, 9, 21), bids=40, **extra):
+    """A virtual assistant's bids for one day."""
+    return Interview.objects.create(user=user, date=day, bids=bids, **extra)

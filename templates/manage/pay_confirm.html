@@ -14,8 +14,8 @@
   <div class="alert alert-warning banner">
     <span class="alert-icon">{% icon "triangle-alert" 20 %}</span>
     <div class="alert-body">
-      <p class="alert-title">Not included (no hourly rate yet)</p>
-      <p>{% for skipped_member, skipped_totals in skipped %}<a href="{% url 'tracker:manage_member' skipped_member.pk %}">{{ skipped_member.display_name }}</a> ({{ skipped_totals.count }} interview{{ skipped_totals.count|pluralize }}){% if not forloop.last %}, {% endif %}{% endfor %}. Set a rate to include this work.</p>
+      <p class="alert-title">Not included (no rate yet)</p>
+      <p>{% for skipped_member, skipped_totals in skipped %}<a href="{% url 'tracker:manage_member' skipped_member.pk %}">{{ skipped_member.display_name }}</a> ({{ skipped_totals|work }}){% if not forloop.last %}, {% endif %}{% endfor %}. Set a rate to include this work.</p>
     </div>
   </div>
 {% endif %}
@@ -25,22 +25,23 @@
     <header class="card-head">
       <div class="person">
         <span class="avatar t{{ group.member|avatar_tone }}">{{ group.member|initials }}</span>
-        <div><h2>{{ group.member.display_name }}</h2><p class="card-sub">{{ group.totals.count }} interview{{ group.totals.count|pluralize }} · {{ group.totals.minutes|duration }}</p></div>
+        <div><h2>{{ group.member.display_name }}</h2><p class="card-sub">{{ group.totals|work }}</p></div>
       </div>
       <span class="strong" style="font-size: 16px; color: var(--text)">{{ group.totals.unpaid|money }}</span>
     </header>
     <div class="table-wrap">
       <table class="table responsive">
-        <thead><tr><th>When</th><th class="num">Duration</th><th>Interview with</th><th>Role</th><th>Type</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <thead><tr><th>When</th><th class="num">Logged</th><th>Details</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
         <tbody>
           {% for interview in group.interviews %}
             <tr>
-              <td class="lead" data-label="When"><div class="cell-stack"><span class="strong nowrap">{{ interview.date|date:"D, M j" }}</span><span class="sub nowrap">{{ interview.start_time|time:"H:i" }} – {{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %}<span class="tag">+1 day</span>{% endif %}</span></div></td>
-              <td class="num" data-label="Duration">{{ interview.duration_minutes|duration }}</td>
-              <td data-label="Interview with">{{ interview.interview_with }}</td>
-              <td data-label="Role">{{ interview.role }}</td>
-              <td data-label="Type"><span class="chip">{{ interview.interview_type.name }}</span></td>
-              <td class="num" data-label="Rate">{{ interview.rate|money }}/h</td>
+              <td class="lead" data-label="When"><div class="cell-stack"><span class="strong nowrap">{{ interview.date|date:"D, M j" }}</span>{% if not interview.is_bid_log %}<span class="sub nowrap">{{ interview.start_time|time:"H:i" }} – {{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %}<span class="tag">+1 day</span>{% endif %}</span>{% endif %}</div></td>
+              <td class="num" data-label="Logged">{% if interview.is_bid_log %}{{ interview.bids|bid_count }}{% else %}{{ interview.duration_minutes|duration }}{% endif %}</td>
+              <td data-label="Details">
+                {% if interview.is_bid_log %}{{ interview.notes|default:"—"|truncatechars:80 }}
+                {% else %}<div class="cell-stack"><span class="strong">{{ interview.interview_with }}</span><span class="sub">{{ interview.role }}{% if interview.is_interview %} · {{ interview.interview_type.name }}{% endif %}</span></div>{% endif %}
+              </td>
+              <td class="num" data-label="Rate">{{ interview.rate|money }}/{{ interview.rate_unit }}</td>
               <td class="num" data-label="Amount"><span class="strong">{{ interview.amount|money }}</span></td>
             </tr>
           {% endfor %}
