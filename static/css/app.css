@@ -313,7 +313,6 @@ a:hover { color: var(--primary-hover); }
 }
 .card-head.plain { border-bottom: 0; padding-bottom: 4px; }
 .card-sub { margin-top: 2px; color: var(--muted); font-size: 13px; }
-.card-meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .card-body { padding: 20px; }
 .card-foot { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-2); }
 .card-head a.more { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 13px; }
@@ -393,6 +392,14 @@ a.person:hover .person-name { color: var(--primary); }
 .table .actions > * + * { margin-left: 8px; }
 .table .actions form { display: inline; margin: 0; }
 .cell-stack { display: flex; flex-direction: column; }
+/* Day or week headings inside one interview table, so columns line up across groups */
+.table .group-row th {
+  padding: 16px 20px 10px; background: var(--surface); border-top: 1px solid var(--border);
+  color: var(--text); font-size: 13.5px; white-space: normal;
+}
+.table thead + tbody .group-row th { border-top: 0; }
+.group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 16px; flex-wrap: wrap; }
+.group-meta { color: var(--muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .cell-stack .sub { margin-top: 1px; }
 
 /* Stacked layout: when a table's card is narrower than 940px each row becomes a small card of
@@ -418,6 +425,11 @@ a.person:hover .person-name { color: var(--primary); }
   .table.responsive:not(.fits) td.actions { justify-content: flex-end; padding-top: 10px !important; }
   .table.responsive:not(.fits) tfoot tr { background: var(--surface-2); }
   .table.responsive:not(.fits) .stacked-only { display: inline; }
+  .table.responsive:not(.fits) tr.group-row { padding: 0; }
+  .table.responsive:not(.fits) .group-row th {
+    display: block; padding: 12px 16px; background: var(--surface-2); border-top: 1px solid var(--border);
+  }
+  .table.responsive:not(.fits) thead + tbody .group-row th { border-top: 0; }
   .table.responsive:not(.fits) .btn-icon { width: auto; padding: 0 12px; }
 }
 

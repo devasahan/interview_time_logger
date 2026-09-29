@@ -86,15 +86,12 @@
   </section>
 {% endif %}
 
-{% for group in groups %}
+{% if groups %}
   <section class="card">
-    <header class="card-head">
-      <h2>{{ group.label }}</h2>
-      <span class="card-meta">{{ group.totals.count }} interview{{ group.totals.count|pluralize }} · {{ group.totals.minutes|duration }} · {{ group.totals.earned|money }}</span>
-    </header>
-    {% include "tracker/_interview_table.html" with interviews=group.interviews %}
+    <header class="card-head"><div><h2>Interviews</h2><p class="card-sub">{{ period.label }}, {% if period.kind == "month" %}week by week{% else %}day by day{% endif %}</p></div></header>
+    {% include "tracker/_interview_table.html" with interview_groups=groups %}
   </section>
-{% empty %}
+{% else %}
   <section class="card">
     {% if can_log %}
       {% url 'tracker:interview_create' as create_url %}
@@ -103,5 +100,5 @@
       {% include "includes/empty.html" with empty_icon="calendar-days" empty_title="No interviews in "|add:period.label empty_text="Use the arrows to look at other dates." %}
     {% endif %}
   </section>
-{% endfor %}
+{% endif %}
 {% endblock %}

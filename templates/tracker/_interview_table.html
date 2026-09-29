@@ -1,4 +1,8 @@
-{% load l10n tracker_tags %}
+{% load tracker_tags %}
+{% comment %}
+  Interviews as one table. Pass interview_groups (label, totals, interviews) to split the rows
+  into days or weeks under one set of column headers, or a flat list as interviews.
+{% endcomment %}
 <div class="table-wrap">
   <table class="table responsive">
     <thead>
@@ -13,70 +17,24 @@
         {% if show_actions %}<th><span class="sr-only">Actions</span></th>{% endif %}
       </tr>
     </thead>
-    <tbody>
-      {% for interview in interviews %}
-        <tr>
-          {% if show_user %}
-            <td class="lead" data-label="Member">
-              <a class="person" href="{% url 'tracker:manage_member' interview.user_id %}">
-                <span class="avatar avatar-sm t{{ interview.user|avatar_tone }}">{{ interview.user|initials }}</span>
-                <span class="person-name">{{ interview.user.display_name }}</span>
-              </a>
-            </td>
-          {% endif %}
-          <td data-label="When"{% if not show_user %} class="lead"{% endif %}>
-            <div class="cell-stack">
-              <span class="strong nowrap">{{ interview.date|date:"D, M j" }}</span>
-              <span class="sub nowrap">{{ interview.start_time|time:"H:i" }} – {{ interview.end_time|time:"H:i" }}{% if interview.ends_next_day %}<span class="tag" title="Ended the next day">+1 day</span>{% endif %}</span>
-            </div>
-          </td>
-          <td data-label="Duration" class="num">{{ interview.duration_minutes|duration }}</td>
-          <td data-label="Interview">
-            <div class="cell-stack">
-              <span class="strong">{{ interview.interview_with }}</span>
-              <span class="sub">{{ interview.role }}</span>
-              {% if interview.notes %}<span class="sub" title="{{ interview.notes }}">{{ interview.notes|truncatechars:60 }}</span>{% endif %}
-            </div>
-          </td>
-          <td data-label="Type"><span class="chip">{{ interview.interview_type.name }}</span></td>
-          <td data-label="Amount" class="num">
-            <div class="cell-stack">
-              <span class="strong">{{ interview.amount|money }}</span>
-              {% if interview.rate is not None %}<span class="sub">{{ interview.rate|money }}/h</span>{% endif %}
-            </div>
-          </td>
-          <td data-label="Status">
-            <div class="cell-stack">
-              {% if can_set_paid and interview.amount is not None %}
-                <form method="post" action="{% url 'tracker:manage_interview_status' interview.pk %}" class="status-form">
-                  {% csrf_token %}
-                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                  <input type="hidden" name="expected_amount" value="{{ interview.amount|unlocalize }}">
-                  <select name="status" class="status-select{% if interview.is_paid %} is-paid{% endif %}" onchange="this.form.submit()" aria-label="Payment status of the interview with {{ interview.interview_with }} on {{ interview.date|date:'M j' }}">
-                    <option value="unpaid"{% if not interview.is_paid %} selected{% endif %}>To be paid</option>
-                    <option value="paid"{% if interview.is_paid %} selected{% endif %}>Paid</option>
-                  </select>
-                  <noscript><button type="submit" class="btn btn-sm">Save</button></noscript>
-                </form>
-              {% elif interview.is_paid %}
-                <span><span class="badge badge-paid">Paid</span></span>
-              {% elif interview.amount is None %}
-                <span><span class="badge badge-muted" title="No hourly rate set yet">Rate not set</span></span>
-              {% else %}
-                <span><span class="badge badge-pending">To be paid</span></span>
-              {% endif %}
-              {% if interview.is_paid %}<span class="sub nowrap" title="Paid on {{ interview.payout.paid_at|date:'M j, Y' }}">on {{ interview.payout.paid_at|date:"M j" }}</span>{% endif %}
-            </div>
-          </td>
-          {% if show_actions %}
-            <td class="actions">
-              {% if not interview.is_paid %}
-                <a class="btn btn-ghost btn-sm btn-icon" href="{% url 'tracker:interview_edit' interview.pk %}?next={{ request.get_full_path|urlencode }}" title="Edit" aria-label="Edit the interview with {{ interview.interview_with }} on {{ interview.date|date:'M j' }}">{% icon "pencil" 16 %}<span class="stacked-only">Edit</span></a>
-              {% endif %}
-            </td>
-          {% endif %}
-        </tr>
+    {% if interview_groups %}
+      {% for group in interview_groups %}
+        <tbody>
+          <tr class="group-row">
+            <th colspan="{% if show_user and show_actions %}8{% elif show_user or show_actions %}7{% else %}6{% endif %}" scope="rowgroup">
+              <span class="group-head">
+                <span class="group-title">{{ group.label }}</span>
+                <span class="group-meta">{{ group.totals.count }} interview{{ group.totals.count|pluralize }} · {{ group.totals.minutes|duration }} · {{ group.totals.earned|money }}</span>
+              </span>
+            </th>
+          </tr>
+          {% for interview in group.interviews %}{% include "tracker/_interview_row.html" %}{% endfor %}
+        </tbody>
       {% endfor %}
-    </tbody>
+    {% else %}
+      <tbody>
+        {% for interview in interviews %}{% include "tracker/_interview_row.html" %}{% endfor %}
+      </tbody>
+    {% endif %}
   </table>
 </div>
