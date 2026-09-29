@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
-    <p class="page-sub">{{ today|date:"l, F j, Y" }}{% if rate is not None %} · Your rate is {{ rate|money }}/h{% endif %}</p>
+    <p class="page-sub">{{ today|date:"l, F j, Y" }}{% if user.team_role %} · {{ user.get_team_role_display }}{% endif %}{% if rate is not None %} · Your rate is {{ rate|money }}/h{% endif %}</p>
   </div>
 </div>
 

@@ -15,7 +15,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import ApproveForm, InterviewTypeForm, PayoutForm, RateForm
+from accounts.models import TeamRole
+
+from .forms import ApproveForm, ApproveWithRateForm, InterviewTypeForm, PayoutForm, RateForm, RoleForm
 from .models import HourlyRate, Interview, InterviewType, Payout
 from .periods import Period, format_range
 from .services import (
@@ -137,18 +139,26 @@ def team(request):
             "unpaid": unpaid_by_user.get(member.pk, Totals()),
         }
         for member in members
+        if member.status != "pending"
     ]
-    return render(request, "manage/team.html", {"nav": "team", "rows": rows})
+    waiting = sorted((m for m in members if m.status == "pending"), key=attrgetter("date_joined"))
+    return render(
+        request,
+        "manage/team.html",
+        {"nav": "team", "rows": rows, "waiting": waiting, "role_choices": TeamRole.choices},
+    )
 
 
-def _save_rate(request, member, rate, effective_from):
-    """Set a member's rate, approving them if they're still waiting."""
+def _save_rate(request, member, rate, effective_from, team_role=""):
+    """Set a member's rate, approving them (with their role) if they're still waiting."""
     set_hourly_rate(member, rate, effective_from, request.user)
     if not member.is_approved:
         member.is_approved = True
-        member.save(update_fields=["is_approved"])
+        member.team_role = team_role
+        member.save(update_fields=["is_approved", "team_role"])
+        details = ", ".join(filter(None, [member.get_team_role_display(), f"{money(rate)}/h"]))
         messages.success(
-            request, f"{member.display_name} is approved at {money(rate)}/h and can start logging interviews."
+            request, f"{member.display_name} is approved ({details}) and can start logging interviews."
         )
     else:
         messages.success(
@@ -161,17 +171,24 @@ def member_detail(request, pk):
     member = get_object_or_404(User, pk=pk)
     today = timezone.localdate()
 
-    form = RateForm(request.POST if request.method == "POST" else None)
+    form_class = ApproveWithRateForm if member.status == "pending" else RateForm
+    form = form_class(request.POST if request.method == "POST" else None)
     if form.is_bound and form.is_valid():
-        _save_rate(request, member, form.cleaned_data["rate"], form.cleaned_data["effective_from"])
+        _save_rate(
+            request,
+            member,
+            form.cleaned_data["rate"],
+            form.cleaned_data["effective_from"],
+            form.cleaned_data.get("team_role", ""),
+        )
         return redirect("tracker:manage_member", pk=member.pk)
 
     rate_book = RateBook([member.pk])
     current_rate = rate_book.current_rate(member.pk)
     if not form.is_bound:
-        form = RateForm(initial={"rate": current_rate, "effective_from": today})
+        form = form_class(initial={"rate": current_rate, "effective_from": today})
         if member.status == "pending":
-            form.fields["rate"].widget.attrs["autofocus"] = True
+            form.fields["team_role"].widget.attrs["autofocus"] = True
 
     week, month = Period.week_of(today), Period.month_of(today)
     in_range = price_interviews(
@@ -190,6 +207,7 @@ def member_detail(request, pk):
             "member": member,
             "rate": current_rate,
             "form": form,
+            "role_form": RoleForm(initial={"team_role": member.team_role}),
             "rates": rates,
             "rate_since": started[0].effective_from if started else None,
             "next_rate": upcoming[-1] if started and upcoming else None,
@@ -209,10 +227,27 @@ def member_approve(request, pk):
     member = get_object_or_404(User, pk=pk)
     form = ApproveForm(request.POST)
     if form.is_valid():
-        _save_rate(request, member, form.cleaned_data["rate"], timezone.localdate())
+        _save_rate(
+            request, member, form.cleaned_data["rate"], timezone.localdate(), form.cleaned_data["team_role"]
+        )
     else:
-        messages.error(request, f"{member.display_name} wasn't approved. {form.errors['rate'][0]}")
+        problems = " ".join(errors[0] for errors in form.errors.values())
+        messages.error(request, f"{member.display_name} wasn't approved. {problems}")
     return redirect(safe_next(request, reverse("tracker:manage_team")))
+
+
+@staff_required
+@require_POST
+def member_set_role(request, pk):
+    member = get_object_or_404(User, pk=pk)
+    form = RoleForm(request.POST)
+    if form.is_valid():
+        member.team_role = form.cleaned_data["team_role"]
+        member.save(update_fields=["team_role"])
+        messages.success(request, f"{member.display_name}'s role is now {member.get_team_role_display()}.")
+    else:
+        messages.error(request, form.errors["team_role"][0])
+    return redirect("tracker:manage_member", pk=member.pk)
 
 
 @staff_required

@@ -14,6 +14,7 @@
           {% elif member.status == "active" %}<span class="badge badge-active">Active</span>
           {% elif member.status == "admin" %}<span class="badge badge-admin">Admin</span>
           {% else %}<span class="badge badge-deactivated">Deactivated</span>{% endif %}
+          {% if member.team_role %}<span class="chip">{{ member.get_team_role_display }}</span>{% endif %}
         </div>
         <p class="page-sub">{{ member.username }}{% if member.email %} · {{ member.email }}{% endif %} · joined {{ member.date_joined|date:"M j, Y" }}</p>
       </div>
@@ -29,7 +30,7 @@
     <span class="alert-icon">{% icon "user-plus" 20 %}</span>
     <div class="alert-body">
       <p class="alert-title">{{ member.display_name }} signed up and is waiting for approval.</p>
-      <p>Set their hourly rate below to approve them. They can start logging interviews right away.</p>
+      <p>Choose their role and hourly rate below to approve them. They can start logging interviews right away.</p>
     </div>
   </div>
 {% endif %}
@@ -59,16 +60,17 @@
 
 <div class="grid-split">
   <section class="card">
-    <header class="card-head"><div><h2>{% if member.status == "pending" %}Approve and set hourly rate{% else %}Hourly rate{% endif %}</h2><p class="card-sub">Only admins can set or change rates.</p></div></header>
+    <header class="card-head"><div><h2>{% if member.status == "pending" %}Approve: role and hourly rate{% else %}Hourly rate{% endif %}</h2><p class="card-sub">Only admins can set or change rates.</p></div></header>
     <form method="post" novalidate>
       {% csrf_token %}
       <div class="card-body">
         {% include "includes/form_errors.html" %}
+        {% if member.status == "pending" %}{% include "includes/field.html" with field=form.team_role %}{% endif %}
         <div class="form-grid cols-2">
           {% include "includes/field.html" with field=form.rate %}
           {% include "includes/field.html" with field=form.effective_from %}
         </div>
-        <button type="submit" class="btn btn-primary">{% if member.status == "pending" %}{% icon "user-check" %} Approve at this rate{% else %}{% icon "check" %} Save rate{% endif %}</button>
+        <button type="submit" class="btn btn-primary">{% if member.status == "pending" %}{% icon "user-check" %} Approve{% else %}{% icon "check" %} Save rate{% endif %}</button>
       </div>
     </form>
     {% if rates %}
@@ -119,6 +121,13 @@
     <section class="card">
       <header class="card-head"><div><h2>Account</h2></div></header>
       <div class="card-body">
+        {% if not member.is_staff and member.status != "pending" %}
+          <form method="post" action="{% url 'tracker:manage_member_role' member.pk %}" class="role-form" novalidate>
+            {% csrf_token %}
+            {% include "includes/field.html" with field=role_form.team_role %}
+            <button type="submit" class="btn">{% icon "check" %} Save role</button>
+          </form>
+        {% endif %}
         {% if is_self %}
           <p class="muted">This is your own account.</p>
         {% else %}

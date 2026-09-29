@@ -55,10 +55,20 @@ class AccessTests(TestCase):
     def test_members_cannot_approve_anyone(self):
         pending = make_user("newbie", approved=False)
         self.client.force_login(make_user())
-        response = self.client.post(reverse("tracker:manage_member_approve", args=[pending.pk]), {"rate": "99"})
+        response = self.client.post(
+            reverse("tracker:manage_member_approve", args=[pending.pk]), {"team_role": "developer", "rate": "99"}
+        )
         self.assertEqual(response.status_code, 403)
         pending.refresh_from_db()
         self.assertFalse(pending.is_approved)
+
+    def test_members_cannot_change_roles(self):
+        member = make_user()
+        self.client.force_login(member)
+        response = self.client.post(reverse("tracker:manage_member_role", args=[member.pk]), {"team_role": "developer"})
+        self.assertEqual(response.status_code, 403)
+        member.refresh_from_db()
+        self.assertEqual(member.team_role, "")
 
     def test_members_cannot_touch_other_members_interviews(self):
         other = make_interview(make_user("sam"))
@@ -171,6 +181,11 @@ class MemberFlowTests(TestCase):
         self.assertContains(home, "Coming up")
         self.assertContains(home, "$20.00")
 
+    def test_home_shows_the_members_role(self):
+        self.user.team_role = "virtual_assistant"
+        self.user.save()
+        self.assertContains(self.client.get(reverse("tracker:home")), "Virtual assistant")
+
 
 class AdminFlowTests(TestCase):
     def setUp(self):
@@ -183,18 +198,21 @@ class AdminFlowTests(TestCase):
         approve_url = reverse("tracker:manage_member_approve", args=[newbie.pk])
         self.assertContains(self.client.get(reverse("tracker:manage_team")), approve_url)
 
-        response = self.client.post(approve_url, {"rate": "20"}, follow=True)
+        response = self.client.post(approve_url, {"team_role": "interviewer", "rate": "20"}, follow=True)
         self.assertRedirects(response, reverse("tracker:manage_team"))
-        self.assertContains(response, "is approved at $20.00/h")
+        self.assertContains(response, "is approved (Interviewer, $20.00/h)")
         newbie.refresh_from_db()
         self.assertTrue(newbie.is_approved)
+        self.assertEqual(newbie.team_role, "interviewer")
         rate = HourlyRate.objects.get(user=newbie)
         self.assertEqual((rate.rate, rate.effective_from), (Decimal("20"), timezone.localdate()))
 
     def test_approving_without_a_rate_says_why(self):
         newbie = make_user("newbie", approved=False)
         response = self.client.post(
-            reverse("tracker:manage_member_approve", args=[newbie.pk]), {"rate": ""}, follow=True
+            reverse("tracker:manage_member_approve", args=[newbie.pk]),
+            {"team_role": "developer", "rate": ""},
+            follow=True,
         )
         self.assertContains(response, "Enter an hourly rate, for example 20.00.")
         newbie.refresh_from_db()
@@ -203,23 +221,53 @@ class AdminFlowTests(TestCase):
         # Same on the member page: the error shows next to the rate box.
         response = self.client.post(
             reverse("tracker:manage_member", args=[newbie.pk]),
-            {"rate": "", "effective_from": timezone.localdate().isoformat()},
+            {"team_role": "developer", "rate": "", "effective_from": timezone.localdate().isoformat()},
         )
         self.assertContains(response, "Enter an hourly rate, for example 20.00.")
         newbie.refresh_from_db()
         self.assertFalse(newbie.is_approved)
+
+    def test_approving_without_a_role_says_why(self):
+        newbie = make_user("newbie", approved=False)
+        response = self.client.post(
+            reverse("tracker:manage_member_approve", args=[newbie.pk]), {"rate": "20"}, follow=True
+        )
+        self.assertContains(response, "Choose a role, for example Interviewer.")
+        response = self.client.post(
+            reverse("tracker:manage_member", args=[newbie.pk]),
+            {"rate": "20", "effective_from": timezone.localdate().isoformat()},
+        )
+        self.assertContains(response, "Choose a role, for example Interviewer.")
+        newbie.refresh_from_db()
+        self.assertFalse(newbie.is_approved)
+        self.assertFalse(HourlyRate.objects.exists())
 
     def test_approve_a_new_member_by_setting_their_rate(self):
         newbie = make_user("newbie", approved=False)
         self.assertContains(self.client.get(reverse("tracker:manage_team")), "Waiting for approval")
         response = self.client.post(
             reverse("tracker:manage_member", args=[newbie.pk]),
-            {"rate": "25.50", "effective_from": timezone.localdate().isoformat()},
+            {"team_role": "virtual_assistant", "rate": "25.50", "effective_from": timezone.localdate().isoformat()},
         )
         self.assertRedirects(response, reverse("tracker:manage_member", args=[newbie.pk]))
         newbie.refresh_from_db()
         self.assertTrue(newbie.is_approved)
+        self.assertEqual(newbie.team_role, "virtual_assistant")
         self.assertEqual(HourlyRate.objects.get(user=newbie).rate, Decimal("25.50"))
+
+    def test_change_a_members_role(self):
+        member = make_user(team_role="interviewer")
+        set_rate(member, 20)
+        response = self.client.post(
+            reverse("tracker:manage_member_role", args=[member.pk]), {"team_role": "developer"}, follow=True
+        )
+        self.assertRedirects(response, reverse("tracker:manage_member", args=[member.pk]))
+        self.assertContains(response, "role is now Developer")
+        member.refresh_from_db()
+        self.assertEqual(member.team_role, "developer")
+        self.assertContains(self.client.get(reverse("tracker:manage_team")), "Developer")
+        # Changing the role doesn't touch the rate history.
+        self.assertEqual(HourlyRate.objects.filter(user=member).count(), 1)
 
     def test_rejects_negative_rates(self):
         member = make_user()

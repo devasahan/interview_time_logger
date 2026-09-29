@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Q
 
+from accounts.models import TeamRole
+
 from .models import Interview, InterviewType, validate_time_slot
 from .periods import EARLIEST_DATE, LATEST_DATE
 
@@ -79,9 +81,18 @@ def hourly_rate_field():
     )
 
 
+def team_role_field():
+    return forms.ChoiceField(
+        label="Role",
+        choices=[("", "Choose a role")] + TeamRole.choices,
+        error_messages={"required": "Choose a role, for example Interviewer."},
+    )
+
+
 class ApproveForm(forms.Form):
     """One-step approval from the Team page; the rate starts today."""
 
+    team_role = team_role_field()
     rate = hourly_rate_field()
 
 
@@ -92,6 +103,17 @@ class RateForm(forms.Form):
         validators=[MinValueValidator(EARLIEST_DATE), MaxValueValidator(LATEST_DATE)],
         help_text="Applies to unpaid interviews on or after this date. Paid interviews keep the rate they were paid at.",
     )
+
+
+class ApproveWithRateForm(RateForm):
+    """Approval from the member's page: their role plus a rate from any date."""
+
+    team_role = team_role_field()
+    field_order = ["team_role", "rate", "effective_from"]
+
+
+class RoleForm(forms.Form):
+    team_role = team_role_field()
 
 
 class PayoutForm(forms.Form):

@@ -409,7 +409,11 @@ a:hover { color: var(--primary-hover); }
 .person .cell-stack { min-width: 0; }
 .person-name { color: var(--text); font-weight: 600; white-space: nowrap; }
 a.person:hover .person-name { color: var(--primary); }
-.person .sub { margin-top: 1px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.person .sub {
+  display: block; margin-top: 1px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted); font-size: 12.5px; font-weight: 400;
+}
+.approval .person .sub { max-width: none; white-space: normal; }
 
 /* ---------- Tables ---------- */
 /* position: relative keeps screen-reader-only labels inside the scroll box, so a wide table
@@ -426,7 +430,6 @@ a.person:hover .person-name { color: var(--primary); }
 .table th:last-child, .table td:last-child { padding-right: 20px; }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover td { background: var(--surface-hover); }
-.table tr.highlight td { background: var(--warning-soft); }
 .table tfoot td { font-weight: 600; color: var(--text); background: var(--surface-2); border-top: 1px solid var(--border); border-bottom: 0; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .table .strong { color: var(--text); font-weight: 600; }
@@ -453,7 +456,6 @@ a.person:hover .person-name { color: var(--primary); }
   .table.responsive:not(.fits) tr { display: block; padding: 14px 16px; border-bottom: 1px solid var(--border); }
   .table.responsive:not(.fits) tbody tr:last-child { border-bottom: 0; }
   .table.responsive:not(.fits) tbody tr:hover td { background: none; }
-  .table.responsive:not(.fits) tr.highlight { background: var(--warning-soft); }
   .table.responsive:not(.fits) td {
     display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
     padding: 4px 0 !important; border: 0; text-align: right; background: none;
@@ -563,8 +565,24 @@ label.checkbox input { width: 16px; height: 16px; min-height: 0; margin: 0; acce
   color: var(--muted); font-weight: 500; pointer-events: none;
 }
 .input-affix input { padding-left: calc(20px + var(--affix-w, 1ch)); }
-.approve-inline, .table .actions .approve-inline { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
-.approve-inline input[type="number"] { width: 100px; min-height: 32px; padding: 4px 10px; font-size: 13px; }
+/* New sign-ups waiting for approval (Team page) */
+.approvals { list-style: none; margin: 0; padding: 0; }
+.approval {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.approval:last-child { border-bottom: 0; }
+.approve-form { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
+.approve-form select { width: 190px; }
+.approve-form input[type="number"] { width: 120px; }
+@media (max-width: 640px) {
+  .approve-form { width: 100%; }
+  .approve-form select, .approve-form input[type="number"] { flex: 1 1 140px; width: auto; }
+  .approve-form .btn { flex: 1 1 100%; }
+}
+/* Change a member's role (member page) */
+.role-form { display: flex; align-items: flex-end; gap: 10px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+.role-form .field { flex: 1; margin: 0; }
 .inline-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
 /* ---------- Week / month switcher ---------- */

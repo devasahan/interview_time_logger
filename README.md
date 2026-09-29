@@ -8,7 +8,7 @@ A small web app where team members log the interviews they take part in, and the
 - See everything on one page: this week's and this month's totals, an earnings chart, their interviews by week or by month, what's still to be paid, and every payment they've received.
 
 **The admin can:**
-- Approve new sign-ups in one step on the **Team** page by entering their hourly rate, and change rates later. Only the admin can do this.
+- Approve new sign-ups in one step on the **Team** page by choosing their role (Interviewer, Developer or Virtual assistant) and entering their hourly rate, and change either later. Only the admin can do this.
 - See everyone's interviews by week or month, filtered by member.
 - Change any interview's pay status between **To be paid** and **Paid** right in the interview lists (Overview, Interviews, each pay week). Members see the new status, with the date it was paid.
 - Or run weekly payroll: review a week, pay a member (or everyone) in one go, and record it with an optional note such as a transfer reference. A payment recorded by mistake can be undone.
@@ -41,7 +41,7 @@ Open http://127.0.0.1:8000 and log in with the admin account.
 ### Try the whole flow
 
 1. Open a private browser window, go to http://127.0.0.1:8000/accounts/signup/ and create a member account. It says "waiting for approval".
-2. In your admin window go to **Team**, type an hourly rate next to the new member and click **Approve**.
+2. In your admin window go to **Team**, pick a role and type an hourly rate next to the new member, then click **Approve**.
 3. As the member, click **+ Log interview** and add a few interviews. They show up on the member's home page, where **Week** and **Month** switch the interview list.
 4. As the admin, change an interview's status to **Paid** in **Interviews** (or open **Payroll**, pick the week, click **Pay …** and **Mark as paid** to pay a whole week).
 5. As the member, the home page now shows the payment under **Payment history**, and those interviews show as **Paid**.

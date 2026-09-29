@@ -102,7 +102,7 @@
               <td class="lead" data-label="Member">
                 <a class="person" href="{% url 'tracker:manage_member' row.member.pk %}">
                   <span class="avatar avatar-sm t{{ row.member|avatar_tone }}">{{ row.member|initials }}</span>
-                  <span class="cell-stack"><span class="person-name">{{ row.member.display_name }}</span><span class="sub">{{ row.member.email|default:row.member.username }}</span></span>
+                  <span class="cell-stack"><span class="person-name">{{ row.member.display_name }}</span><span class="sub">{% if row.member.team_role %}{{ row.member.get_team_role_display }}{% else %}{{ row.member.email|default:row.member.username }}{% endif %}</span></span>
                 </a>
               </td>
               <td class="num" data-label="Rate">{% if row.rate is not None %}{{ row.rate|money }}/h{% else %}<span class="badge badge-muted">not set</span>{% endif %}</td>

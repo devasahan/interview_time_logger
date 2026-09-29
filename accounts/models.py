@@ -2,12 +2,25 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
+class TeamRole(models.TextChoices):
+    INTERVIEWER = "interviewer", "Interviewer"
+    DEVELOPER = "developer", "Developer"
+    VIRTUAL_ASSISTANT = "virtual_assistant", "Virtual assistant"
+
+
 class User(AbstractUser):
     """A team member. Admins are users with ``is_staff``."""
 
     is_approved = models.BooleanField(
         default=False,
         help_text="Approved members can log interviews. New sign-ups wait for an admin.",
+    )
+    team_role = models.CharField(
+        "role",
+        max_length=20,
+        choices=TeamRole.choices,
+        blank=True,
+        help_text="What the member does on the team. The admin picks it when approving them.",
     )
 
     class Meta:
